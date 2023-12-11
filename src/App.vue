@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import CookieBanner from './components/CookieBanner.vue';
+
 import CommandLineInterface from './components/CommandLineInterface.vue';
 import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
+// import HelloWorld from './components/HelloWorld.vue'
 // import HelloWorld from './components/HelloWorld.vue'
 </script>
 
 <template>
+  <CookieBanner v-if="showBanner" />
   <div>
     <PromptExecutionLogo />
 
