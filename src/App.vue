@@ -5,7 +5,7 @@ import CommandLineInterface from './components/CommandLineInterface.vue';
 
 <template>
   <div>
-    <img src="/PromptExecution1.svg" class="logo" alt="Logo"/>
+    <img src="/PromptExecution2.svg" class="logo" alt="Logo"/>
 
     <!-- <a href="https://vitejs.dev" target="_blank">
       <img src="/vite.svg" class="logo" alt="Vite logo" />
