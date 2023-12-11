@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CommandLineInterface from './components/CommandLineInterface.vue';
-import HelloWorld from './components/HelloWorld.vue'
+// import HelloWorld from './components/HelloWorld.vue'
 </script>
 
 <template>
