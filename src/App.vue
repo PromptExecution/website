@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import CommandLineInterface from './components/CommandLineInterface.vue';
+import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
 // import HelloWorld from './components/HelloWorld.vue'
 </script>
 
 <template>
   <div>
-    <img src="/PromptExecution2.svg" class="logo" alt="Logo"/>
+    <PromptExecutionLogo />
 
     <!-- <a href="https://vitejs.dev" target="_blank">
       <img src="/vite.svg" class="logo" alt="Vite logo" />
