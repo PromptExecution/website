@@ -5,20 +5,20 @@
 </script>
 
 <template>
-    <img src="/PromptExecution2.svg" class="logo" alt="Logo"/>
+    <img src="/PromptExecution2b.svg" class="logo" alt="Logo"/>
 </template>
 
 <style scoped>
 
 @font-face {
-  font-family: 'Patron-PersonalUse-Regular';
+  font-family: 'PEPatron-PersonalUse-Regular', 'sans-serif';
   src: url('@/assets/fonts/Patron-PersonalUse-Regular.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'ExodarOutline';
+  font-family: 'PEExodarOutline', 'san-serif';
   src: url('@/assets/fonts/ExodarOutline.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
