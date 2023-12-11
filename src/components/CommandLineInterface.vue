@@ -28,7 +28,7 @@ export default {
   data: () => ({
     commands: {
       "help": () => createStdout("Available commands: hello, login"),
-      "login": () => createStdout("Login not available"),
+      "login": () => createStdout("Login not available (coming soon!)"),
       "hello": () => createStdout("Hello world! #wip"),
     },
   }),

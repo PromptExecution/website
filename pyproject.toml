@@ -7,7 +7,14 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
+pillow = "^10.1.0"
 
+[tool.poetry.scripts]
+promptexec = "evlib.build:main"
+
+[[tool.poetry.packages]]
+include = "evlib"
+from = "pysrc"
 
 [build-system]
 requires = ["poetry-core"]
