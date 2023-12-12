@@ -8,5 +8,12 @@
 .footy {
     font-family: 'PEPatron-PersonalUse-Regular', 'PEExodarOutline', 'Roboto'; /* sans-serif; */
     font-size: 0.8em;
+    
+}
+.footy a:link {
+    color: grey;
+}
+.footy a:hover {
+    color: #646cff;
 }
 </style>
