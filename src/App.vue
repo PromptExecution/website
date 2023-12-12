@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import CommandLineInterface from './components/CommandLineInterface.vue';
 import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
+import TheFooter from './components/TheFooter.vue';
+
 </script>
 
 <template>
@@ -8,7 +10,7 @@ import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
     <PromptExecutionLogo />
   </div>
   <CommandLineInterface  />
-  <!-- <HelloWorld msg="Vitex + Vue" /> -->
+  <TheFooter />
 </template>
 
 <style scoped>
@@ -24,4 +26,6 @@ import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
 .logo.vue:hover {
   filter: drop-shadow(0 0 2em #42b883aa);
 }
+
+
 </style>
