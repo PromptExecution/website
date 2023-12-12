@@ -1,5 +1,5 @@
 <template>
-    <div id="appBackground">
+    <div id="app">
       <gl-canvas @update="glslUpdate">
         <gl-program name="main" :code="shaderCode">
           <gl-float name="u_light" :value="light" />
@@ -20,8 +20,6 @@
       return{
         light:0,
         shaderCode:shader,
-        lastUpdateTime: 0,
-        updateInterval: 100,
       }
     },
     methods:{
@@ -34,19 +32,14 @@
         iDate: number[],
       }){
         //console.log(tickData);
-        const currentTime = Date.now();
-        if (currentTime - this.lastUpdateTime > this.updateInterval) {
-            this.light = (Math.sin(tickData.iTime) + 1) / 2;
-            this.lastUpdateTime = currentTime;
-            }
-        //     this.light = (Math.sin(tickData.iTime)+1)/2;
+        this.light = (Math.sin(tickData.iTime)+1)/2;
       }
     }
   };
   </script>
   
   <style>
-  #appBackground{
+  #app{
     position: absolute;
     top: 0;left: 0;
     padding: 0;margin: 0;
