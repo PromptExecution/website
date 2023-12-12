@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import CommandLineInterface from './components/CommandLineInterface.vue';
 import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
+import Background from './components/Background.vue';
 </script>
 
 <template>
+  <Background />
   <div>
     <PromptExecutionLogo />
   </div>

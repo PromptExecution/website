@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "vue": "^3.3.8",
-    "vue-command": "^35.2.1"
+    "vue-command": "^35.2.1",
+    "vue-glsl": "^1.1.27"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.0",
