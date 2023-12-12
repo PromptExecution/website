@@ -1,4 +1,5 @@
 <template>
+  <div class="cli-container">
   <vue-command :commands="commands" :hide-buttons="true" :show-help="true" :cursor-position="0" :is-fullscreen="true">
     <template #title>Command Line Interface v0.1 -- type "help" for instructions</template>
     <template #prompt>
@@ -13,6 +14,7 @@
     <template #invert>true</template>
     <template #font></template>
   </vue-command>
+</div>
 </template>
 
 <script lang="ts">
@@ -35,3 +37,10 @@ export default {
 };
 </script>
 
+<style scoped>
+.cli-container {
+  /* Adjust the border-radius as needed */
+  border-radius: 10px; /* This will give rounded corners to the container */
+  overflow: hidden; /* Ensures that the child elements adhere to the container's border radius */
+}
+</style>
