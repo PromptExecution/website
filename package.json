@@ -9,6 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/three": "^0.159.0",
+    "simplex-noise": "^4.0.1",
+    "three": "0.134",
+    "troisjs": "^0.3.4",
     "vue": "^3.3.8",
     "vue-command": "^35.2.1"
   },
