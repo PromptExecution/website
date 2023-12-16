@@ -1,6 +1,20 @@
+<!-- src/App.vue -->
 <script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import CookieBanner from './components/CookieBanner.vue';
+
 import CommandLineInterface from './components/CommandLineInterface.vue';
 import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
+
+const showBanner = ref(true); // Or whatever logic you need to show/hide the banner
+
+// Example of how you might control the visibility of the banner
+// This is just a placeholder logic, adjust according to your needs
+onMounted(() => {
+  // Logic to determine if the banner should be shown
+  // For example, check if the user has already accepted cookies
+  // showBanner.value = ...;
+});
 import TheFooter from './components/TheFooter.vue';
 
 </script>
@@ -11,6 +25,8 @@ import TheFooter from './components/TheFooter.vue';
   </div>
   <CommandLineInterface  />
   <TheFooter />
+
+<CookieBanner v-if="showBanner" />
 </template>
 
 <style scoped>
@@ -23,9 +39,10 @@ import TheFooter from './components/TheFooter.vue';
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
-.logo.vue:hover {
+/* .logo.vue:hover {
   filter: drop-shadow(0 0 2em #42b883aa);
 }
+*/
 
 
 </style>

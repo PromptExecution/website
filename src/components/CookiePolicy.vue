@@ -1,0 +1,19 @@
+<!-- CookiePolicy.vue -->
+<template>
+  <div>
+    <!-- Cookie policy content -->
+    We use Cookies. 
+    <input type="checkbox" v-model="allowCookies" /> Accept Cookies
+  </div>
+</template>
+
+<script lang="ts">
+import { useCookies } from '../useCookies'
+export default {
+  setup() {
+    const { allowCookies } = useCookies()
+    return { allowCookies }
+  }
+}
+</script>
+

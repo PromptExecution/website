@@ -13,8 +13,9 @@
     <template #help-text>asdfasdf</template>
     <template #invert>true</template>
     <template #font></template>
+
   </vue-command>
-</div>
+  </div>
 </template>
 
 <script lang="ts">
