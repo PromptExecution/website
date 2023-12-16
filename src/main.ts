@@ -6,12 +6,14 @@ import App from './App.vue'
 // https://matteo-gabriele.gitbook.io/vue-gtag/
 import VueGtag from "vue-gtag";
 import { VueCookieNext } from 'vue-cookie-next';
-import { useCookies } from './useCookies'
+import { createPinia } from 'pinia'
 
 // An application instance won't render anything until its .mount() method is called
 const app = createApp(App);
+const pinia = createPinia()
 
 app
+.use(pinia)
 .use(VueCookieNext)
 .use(VueGtag, {
     config: { 
