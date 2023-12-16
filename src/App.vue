@@ -6,6 +6,9 @@ import CookieBanner from './components/CookieBanner.vue';
 import CommandLineInterface from './components/CommandLineInterface.vue';
 import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
 
+import { useMainStore } from './store';
+const mainStore = useMainStore();
+
 const showBanner = ref(true); // Or whatever logic you need to show/hide the banner
 
 // Example of how you might control the visibility of the banner
@@ -26,7 +29,7 @@ import TheFooter from './components/TheFooter.vue';
   <CommandLineInterface  />
   <TheFooter />
 
-<CookieBanner v-if="showBanner" />
+  <CookieBanner v-if="!mainStore.isCookieConsentSet" />
 </template>
 
 <style scoped>
