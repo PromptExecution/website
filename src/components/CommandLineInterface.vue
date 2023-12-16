@@ -11,13 +11,15 @@ const commands = {
   "help": () => createStdout("Available commands: hello, login, debug"),
   "login": () => {
     mainStore.toggleLogin();
-    return createStdout("Login interface activated.");
-  },
+    const status = mainStore.showLogin ? "Activated" : "Disabled";
+    return createStdout(`Login interface ${status}.`);
+    },
   "hello": () => createStdout("Hello world! #wip"),
   "debug": () => {
     mainStore.toggleDebugPanel();
-    return createStdout("Debug panel activated.");
-  },
+    const status = mainStore.showDebugPanel ? "Activated" : "Disabled";
+    return createStdout(`Debug panel ${status}.`);
+    },
 };
 </script>
 
