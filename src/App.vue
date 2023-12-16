@@ -1,6 +1,6 @@
 <!-- src/App.vue -->
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { onMounted } from 'vue';
 import CookieBanner from './components/CookieBanner.vue';
 
 import CommandLineInterface from './components/CommandLineInterface.vue';
@@ -8,8 +8,6 @@ import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
 
 import { useMainStore } from './store';
 const mainStore = useMainStore();
-
-const showBanner = ref(true); // Or whatever logic you need to show/hide the banner
 
 // Example of how you might control the visibility of the banner
 // This is just a placeholder logic, adjust according to your needs

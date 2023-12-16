@@ -13,7 +13,7 @@ export const useMainStore = defineStore('main', {
     increment() {
       this.count++
     },
-    setCookieConsent(value) {
+    setCookieConsent(value: 'accepted' | 'rejected') {
       this.cookieConsent = value
       localStorage.setItem('cookieConsent', value)
     },
@@ -21,10 +21,10 @@ export const useMainStore = defineStore('main', {
       this.cookieConsent = null;
       localStorage.removeItem('cookieConsent');
     },
-    toggleLogin(show) {
+    toggleLogin() {
       this.showLogin = !this.showLogin;
       },
-    toggleDebugPanel(show) {
+    toggleDebugPanel() {
       this.showDebugPanel = !this.showDebugPanel;
     }
   },

@@ -1,35 +1,32 @@
 import { ref, watch, computed } from 'vue';
 import { useCookie } from 'vue-cookie-next';
 
-const allowCookies = ref<boolean>();
 
 export default function useCookies(gtag: any) {
   const cookie = useCookie();
+  const allowCookies = ref<boolean>();
 
-  if (cookie.isCookieAvailable('cookies_consent')) {
-    allowCookies.value = cookie.getCookie('cookies_consent') === 'true';
-    gtag.optIn();
-  } else {
-    allowCookies.value = undefined;
-  }
+  // Initialize allowCookies based on the existing cookie
+  const initCookieConsent = () => {
+    if (cookie.isCookieAvailable('cookies_consent')) {
+      allowCookies.value = cookie.getCookie('cookies_consent') === 'true';
+      if (allowCookies.value) gtag.optIn();
+    }
+  };
 
-  watch(allowCookies, () => {
-    if (allowCookies.value != undefined) {
-      cookie.setCookie('cookies_consent', allowCookies.value.toString(), {
-        expire: new Date(2022, 1, 1),
+  // Call this function on initialization
+  initCookieConsent();
+
+  watch(allowCookies, (newValue) => {
+    if (newValue !== undefined) {
+      cookie.setCookie('cookies_consent', newValue.toString(), {
+        expire: '1Y' // Expires in 1 year, adjust as needed
       });
-      if (allowCookies.value) {
-        gtag.optIn();
-      } else {
-        gtag.optOut();
-      }
+      newValue ? gtag.optIn() : gtag.optOut();
     }
   });
 
-  const showBanner = computed(() => {
-    return allowCookies.value === undefined;
-  });
-
+  const showBanner = computed(() => allowCookies.value === undefined);
   const okClicked = () => (allowCookies.value = true);
 
   return {

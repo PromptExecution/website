@@ -8,7 +8,7 @@
 </template>
 
 <script lang="ts">
-import { useCookies } from '../useCookies'
+import useCookies from '../useCookies'
 export default {
   setup() {
     const { allowCookies } = useCookies()
