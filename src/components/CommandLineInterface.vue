@@ -1,3 +1,4 @@
+<!-- src/components/CommandLineInterface.vue -->
 <template>
   <div class="cli-container">
   <vue-command :commands="commands" :hide-buttons="true" :show-help="true" :cursor-position="0" :is-fullscreen="true">
