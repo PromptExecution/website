@@ -12,6 +12,24 @@ import { createPinia } from 'pinia'
 const app = createApp(App);
 const pinia = createPinia()
 
+
+import SuperTokens from 'supertokens-web-js';
+import Session from 'supertokens-web-js/recipe/session';
+import ThirdPartyPasswordless from 'supertokens-web-js/recipe/thirdpartypasswordless'
+
+SuperTokens.init({
+    appInfo: {
+        apiDomain: "http://localhost:8080",
+        apiBasePath: "/auth",
+        appName: "...",
+    },
+    recipeList: [
+        Session.init(),
+        ThirdPartyPasswordless.init(),
+    ],
+});
+
+
 app
 .use(pinia)
 .use(VueCookieNext)
