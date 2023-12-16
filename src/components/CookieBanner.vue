@@ -10,31 +10,26 @@
 </template>
 
 <script lang="ts">
-import useCookies from '../useCookies'; 
-import { defineComponent, getCurrentInstance } from 'vue';
+import { defineComponent } from 'vue';
 import { useMainStore } from '../store';
+import { useState } from 'vue-gtag-next';
 
 export default defineComponent({
   setup() {
-    const instance = getCurrentInstance();
-    const gtag = instance?.appContext.config.globalProperties.$gtag;
     const mainStore = useMainStore();
-
-    const { allowCookies } = useCookies(gtag);
+    const { isEnabled } = useState();
 
     const handleConsent = () => {
-      allowCookies.value = true;
       mainStore.setCookieConsent('accepted');
-      if (gtag) {
-        gtag.optIn();
+      if (isEnabled) {
+        isEnabled.value = true; // Enable tracking
       }
     };
 
     const handleReject = () => {
-      allowCookies.value = false;
       mainStore.setCookieConsent('rejected');
-      if (gtag) {
-        gtag.optOut();
+      if (isEnabled) {
+        isEnabled.value = false; // Disable tracking
       }
     };
 

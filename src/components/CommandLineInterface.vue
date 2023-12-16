@@ -24,7 +24,7 @@ const commands = {
 <template>
   <div class="cli-container">
     <vue-command :commands="commands" :hide-buttons="true" :show-help="true" :cursor-position="0" :is-fullscreen="true">
-    <template #title>Command Line Interface v0.1 -- type "help" for instructions</template>
+    <template #title>Command Line Interface v0.2 -- type "help" for instructions</template>
     <template #prompt>
       <span class="prompt">
         <span class="prompt-user">guest</span>
