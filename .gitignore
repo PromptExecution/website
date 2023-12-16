@@ -17,5 +17,5 @@ node_modules/*
 dist/*
 **/*.pyc
 
-bun.lockb
+#bun.lockb
 *.mjs
