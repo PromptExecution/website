@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "path": "^0.12.7",
     "vue": "^3.3.8",
     "vue-command": "^35.2.1",
     "vue-cookie-law": "github:elasticdotventures/vue-cookie-law",

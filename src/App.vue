@@ -5,8 +5,6 @@ import CookieBanner from './components/CookieBanner.vue';
 
 import CommandLineInterface from './components/CommandLineInterface.vue';
 import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
-// import HelloWorld from './components/HelloWorld.vue'
-// import HelloWorld from './components/HelloWorld.vue'
 
 const showBanner = ref(true); // Or whatever logic you need to show/hide the banner
 
@@ -17,6 +15,7 @@ onMounted(() => {
   // For example, check if the user has already accepted cookies
   // showBanner.value = ...;
 });
+import TheFooter from './components/TheFooter.vue';
 
 </script>
 
@@ -25,7 +24,9 @@ onMounted(() => {
     <PromptExecutionLogo />
   </div>
   <CommandLineInterface  />
-  <CookieBanner v-if="showBanner" />
+  <TheFooter />
+
+<CookieBanner v-if="showBanner" />
 </template>
 
 <style scoped>
@@ -40,5 +41,8 @@ onMounted(() => {
 }
 /* .logo.vue:hover {
   filter: drop-shadow(0 0 2em #42b883aa);
-} */
+}
+*/
+
+
 </style>
