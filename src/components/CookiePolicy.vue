@@ -2,12 +2,13 @@
 <template>
   <div>
     <!-- Cookie policy content -->
+    We use Cookies. 
     <input type="checkbox" v-model="allowCookies" /> Accept Cookies
   </div>
 </template>
 
-<script>
-import { useCookies } from './useCookies'
+<script lang="ts">
+import { useCookies } from '../useCookies'
 export default {
   setup() {
     const { allowCookies } = useCookies()
