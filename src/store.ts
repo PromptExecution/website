@@ -5,7 +5,9 @@ export const useMainStore = defineStore('main', {
   state: () => ({
     count: 0,
     // cookieConsent: null // null, 'accepted', or 'rejected'
-    cookieConsent: localStorage.getItem('cookieConsent')
+    cookieConsent: localStorage.getItem('cookieConsent'), 
+    showLogin: false,
+    showDebugPanel: false,
   }),
   actions: {
     increment() {
@@ -14,6 +16,16 @@ export const useMainStore = defineStore('main', {
     setCookieConsent(value) {
       this.cookieConsent = value
       localStorage.setItem('cookieConsent', value)
+    },
+    resetCookieConsent() {
+      this.cookieConsent = null;
+      localStorage.removeItem('cookieConsent');
+    },
+    toggleLogin(show) {
+      this.showLogin = !this.showLogin;
+      },
+    toggleDebugPanel(show) {
+      this.showDebugPanel = !this.showDebugPanel;
     }
   },
   getters: {

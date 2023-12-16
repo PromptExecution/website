@@ -1,7 +1,29 @@
-<!-- src/components/CommandLineInterface.vue -->
+<script setup lang="ts">
+import VueCommand, { createStdout } from "vue-command";
+import "vue-command/dist/vue-command.css";
+import { useMainStore } from '../store';
+import LoginPanel from './LoginPanel.vue';
+import DebugPanel from './DebugPanel.vue';
+
+const mainStore = useMainStore();
+
+const commands = {
+  "help": () => createStdout("Available commands: hello, login, debug"),
+  "login": () => {
+    mainStore.toggleLogin();
+    return createStdout("Login interface activated.");
+  },
+  "hello": () => createStdout("Hello world! #wip"),
+  "debug": () => {
+    mainStore.toggleDebugPanel();
+    return createStdout("Debug panel activated.");
+  },
+};
+</script>
+
 <template>
   <div class="cli-container">
-  <vue-command :commands="commands" :hide-buttons="true" :show-help="true" :cursor-position="0" :is-fullscreen="true">
+    <vue-command :commands="commands" :hide-buttons="true" :show-help="true" :cursor-position="0" :is-fullscreen="true">
     <template #title>Command Line Interface v0.1 -- type "help" for instructions</template>
     <template #prompt>
       <span class="prompt">
@@ -14,30 +36,11 @@
     <template #help-text>asdfasdf</template>
     <template #invert>true</template>
     <template #font></template>
-
   </vue-command>
+    <LoginPanel v-if="mainStore.showLogin" />
+    <DebugPanel v-if="mainStore.showDebugPanel" />
   </div>
 </template>
-
-<script lang="ts">
-// https://github.com/ndabAP/vue-command
-import VueCommand, { createStdout } from "vue-command";
-import "vue-command/dist/vue-command.css";
-
-export default {
-  components: {
-    VueCommand,
-  },
-
-  data: () => ({
-    commands: {
-      "help": () => createStdout("Available commands: hello, login"),
-      "login": () => createStdout("Login not available (coming soon!)"),
-      "hello": () => createStdout("Hello world! #wip"),
-    },
-  }),
-};
-</script>
 
 <style scoped>
 .cli-container {

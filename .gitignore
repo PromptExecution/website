@@ -18,3 +18,4 @@ dist/*
 **/*.pyc
 
 bun.lockb
+*.mjs

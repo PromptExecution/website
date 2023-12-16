@@ -26,3 +26,4 @@ app
   })
 .provide('gtag', app.config.globalProperties.$gtag)
 .mount('#app')
+  

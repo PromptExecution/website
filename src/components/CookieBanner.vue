@@ -14,7 +14,6 @@ import useCookies from '../useCookies';
 import { defineComponent, getCurrentInstance } from 'vue';
 import { useMainStore } from '../store';
 
-
 export default defineComponent({
   setup() {
     const instance = getCurrentInstance();
