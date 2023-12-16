@@ -47,9 +47,15 @@ export default defineComponent({
   bottom: 0;
   background-color: #fff; /* Or any color you prefer */
   color: #000;
-  padding: 20px;
+  padding: 8px;
   box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
   animation: slideUp 0.5s ease-out;
+
+  /* Artistic Border */
+  border: 2px solid #000; /* Basic solid border, change as needed */
+  border-radius: 10px; /* Rounded corners */
+  /* You can add more artistic styles like border-image or box-shadow for more effects */
+
 }
 
 @keyframes slideUp {
