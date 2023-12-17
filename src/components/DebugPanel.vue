@@ -11,6 +11,7 @@ import { computed } from 'vue';
 import { useMainStore } from '../store';
 
 const mainStore = useMainStore();
+// const config = mainStore.config; // Access configuration
 
 const formattedState = computed(() => {
   return JSON.stringify(mainStore.$state, null, 2);

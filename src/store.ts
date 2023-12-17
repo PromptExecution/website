@@ -1,5 +1,7 @@
 // src/store.js
 import { defineStore } from 'pinia'
+import axios from 'axios';
+import { AppConfig } from './types/config'; // Import the interface
 
 export const useMainStore = defineStore('main', {
   state: () => ({
@@ -8,6 +10,7 @@ export const useMainStore = defineStore('main', {
     cookieConsent: localStorage.getItem('cookieConsent'), 
     showLogin: false,
     showDebugPanel: false,
+    config: null as AppConfig | null, // static config .. Use the AppConfig interface
   }),
   actions: {
     increment() {
@@ -26,7 +29,16 @@ export const useMainStore = defineStore('main', {
       },
     toggleDebugPanel() {
       this.showDebugPanel = !this.showDebugPanel;
-    }
+    },
+    async getConfig() {
+      try {
+        const response = await axios.get('/config.json');
+        this.config = response.data as AppConfig;
+        // this.config = response.data;
+      } catch (error) {
+        console.error('Failed to load config:', error);
+      }
+    },
   },
   getters: {
     isCookieConsentSet: (state) => state.cookieConsent !== null

@@ -15,6 +15,7 @@ onMounted(() => {
   // Logic to determine if the banner should be shown
   // For example, check if the user has already accepted cookies
   // showBanner.value = ...;
+  mainStore.getConfig();
 });
 import TheFooter from './components/TheFooter.vue';
 
