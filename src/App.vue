@@ -21,6 +21,7 @@ import TheFooter from './components/TheFooter.vue';
 </script>
 
 <template>
+  <router-view></router-view>
   <div>
     <PromptExecutionLogo />
   </div>
