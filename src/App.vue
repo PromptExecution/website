@@ -26,8 +26,13 @@ import TheNavigation from './components/TheNavigation.vue';
 
 <template>
 
+  <!--
+    alternatively: router-view can have :key="$route.fullPath"
+    to force a re-render when the route changes
+    -->
   <router-view></router-view>
   <TheNavigation />
+
 
   <div>
     <PromptExecutionLogo />
