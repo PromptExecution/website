@@ -7,8 +7,9 @@ export const useMainStore = defineStore('main', {
   state: () => ({
     count: 0,
     // cookieConsent: null // null, 'accepted', or 'rejected'
-    cookieConsent: localStorage.getItem('cookieConsent'), 
+    cookieConsent: localStorage.getItem('cookieConsent'),
     showLogin: false,
+    user: null as null | string,
     showDebugPanel: false,
     config: null as AppConfig | null, // static config .. Use the AppConfig interface
   }),

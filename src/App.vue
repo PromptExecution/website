@@ -17,11 +17,24 @@ onMounted(() => {
   // showBanner.value = ...;
   mainStore.getConfig();
 });
+
+
 import TheFooter from './components/TheFooter.vue';
+import TheNavigation from './components/TheNavigation.vue';
+
 
 </script>
 
 <template>
+
+  <!--
+    alternatively: router-view can have :key="$route.fullPath"
+    to force a re-render when the route changes
+    -->
+  <router-view></router-view>
+  <TheNavigation />
+
+
   <div>
     <PromptExecutionLogo />
   </div>

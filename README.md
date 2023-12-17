@@ -1,18 +1,43 @@
-# Vue 3 + TypeScript + Vite
+# Welcome
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+```
+make dev
+make build
+```
 
-## Recommended IDE Setup
+## Vue Router
+* https://router.vuejs.org/
+    Named Routes
+    https://vueschool.io/lessons/named-routes
+    Reacting to param changes (loading from dynamic api)
+    https://vueschool.io/lessons/reacting-to-param-changes
+    Using properties
+    https://vueschool.io/lessons/route-props
+    Nested Routes
+    https://vueschool.io/lessons/nested-routes
+    Route Guards
+    https://vueschool.io/lessons/route-guards
+    Query Parameters
+    https://vueschool.io/lessons/router-query-params
+    Vue3 Composition API
+    https://vueschool.io/lessons/router-and-the-composition-api
+        * step by step converting vue2 to vue3 sytnax
+        * demo onBeforeRouteLeave
+    https://vueschool.io/lessons/vue-router-4-bonus-lessons
+        * route.replace
+    https://vueschool.io/lessons/vue-router-4-named-views
+        * NamedViews (left sidebar)
+    https://vueschool.io/lessons/vue-router-4-detecting-navigation-failures
+        * catch+handle navigationFailure
+    https://vueschool.io/lessons/vue-router-4-advanced-routes-matching-syntax
+        * regex route matching
+    https://vueschool.io/lessons/vue-router-4-dynamic-routing
+        * adding dynamic routes!  (such as custom buttons)
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+https://github.com/vuejs/devtools
+https://vue-auth3.js.org/methods/utils.html
 
-## Type Support For `.vue` Imports in TS
+## https://www.npmjs.com/package/vue3-json-viewer
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
-
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
-
-1. Disable the built-in TypeScript Extension
-   1. Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-   2. Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
+## VueJSX
+https://www.npmjs.com/package/@vitejs/plugin-vue-jsx
