@@ -1,3 +1,4 @@
 {
-    "SUPERTOKEN_BACKEND_URL": "http://localhost:3567"
+    "SUPERTOKEN_BACKEND_URL": "http://localhost:3567",
+    "PROMPTEXEC_BACKEND_URL": "http://localhost:8000"
 }
