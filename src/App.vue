@@ -16,12 +16,19 @@ onMounted(() => {
   // For example, check if the user has already accepted cookies
   // showBanner.value = ...;
 });
+
+
 import TheFooter from './components/TheFooter.vue';
+import TheNavigation from './components/TheNavigation.vue';
+
 
 </script>
 
 <template>
+
   <router-view></router-view>
+  <TheNavigation />
+
   <div>
     <PromptExecutionLogo />
   </div>
