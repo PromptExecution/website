@@ -10,6 +10,10 @@ import { createPinia } from 'pinia'
 import router from '@/router'
 import AppLink from '@/components/AppLink.vue'
 
+import { useKindeAuth } from '@/plugins/useKindeAuth';
+import { createCodeChallenge } from './utils/pkceUtils';
+
+
 const app = createApp(App);
 app.component('AppLink', AppLink);  // globally register
 app.use(router);
@@ -21,7 +25,7 @@ app.use(VueGtag, {
   isEnabled: false,
 });
 
-import { useKindeAuth } from '@/plugins/useKindeAuth';
+
 const { isAuthenticated, login, logout } = useKindeAuth();
 app.provide('kindeAuth', { isAuthenticated, login, logout });
 
