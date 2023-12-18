@@ -1,7 +1,7 @@
 <template>
     <div id="nav">
-        <router-link to="/">Home</router-link> |
-        <router-link to="/about">About</router-link>
+        <AppLink to="/">Home</AppLink> |
+        <AppLink to="/about">About</AppLink>
         <!-- <router-link
             v-for="destination in destinations"
             :key="destination.id"
@@ -10,6 +10,13 @@
         >
             {{ destination.name }}
         </router-link> -->
+        |
+        <!--
+        <router-link to="/admin">Dashboard</router-link>
+    -->
+        <AppLink :to="{name: 'Admin'}">Dashboard</AppLink>
+        |
+        <AppLink to="http://google.com">Google</AppLink>
     </div>
 </template>
 

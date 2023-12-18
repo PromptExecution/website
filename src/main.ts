@@ -8,9 +8,11 @@ import VueGtag from "vue-gtag-next";
 import { VueCookieNext } from 'vue-cookie-next';
 import { createPinia } from 'pinia'
 import router from '@/router'
+import AppLink from '@/components/AppLink.vue'
 
 
 const app = createApp(App);
+app.component('AppLink', AppLink);  // globally register
 app.use(router);
 app.use(createPinia());
 app.use(VueCookieNext);

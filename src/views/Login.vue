@@ -11,20 +11,30 @@
 </template>
 
 <script lang="ts">
+import { ref } from 'vue';
+import { useMainStore } from '../store';
+import { useRouter, useRoute } from 'vue-router';
+
 export default {
-    data() {
-        return {
-            username: '',
-            password: '',
+    setup() {
+        const username = ref('');
+        const password = ref('');
+
+        const router = useRouter();
+        const route = useRoute();
+
+        const login = () => {
+
+            const mainStore = useMainStore();
+
+            mainStore.user = username.value;
+
+            const redirectPath = route.query.redirect || { name: 'Admin' };
+            router.push(redirectPath);
+            alert(`Username: ${username.value} Password: ${password.value}`);
         };
-    },
-    methods: {
-        // Auth user against API
-        login() {
-            window.user = this.username
-            this.$router.push({ name: 'Admin' });
-            alert(`Username: ${this.username} Password: ${this.password}`);
-        },
+
+        return { username, password, login };
     },
 
 };
