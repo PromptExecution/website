@@ -1,8 +1,10 @@
-
+// existing src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router';
 
 import Home from '@/views/Home.vue';
 import { useMainStore } from '@/store';
+import { useKindeAuth } from '@/plugins/useKindeAuth';
+
 
 // now we'll lazy load about
 // import About from '@/views/About.vue';
@@ -54,18 +56,31 @@ const router = createRouter({
   }
 });
 
+// router.beforeEach((to, from) => {
+//   const mainStore = useMainStore();
+
+//   if (to.meta.requiresAuth) {
+//     console.log('requires auth!');
+//     const isAuth = mainStore.user ? true : false;
+
+//     if (!isAuth) {
+//       return {
+//         name: 'Login'
+//       };
+//     }
+//   }
+// });
+
 router.beforeEach((to, from) => {
-  const mainStore = useMainStore();
+  const kindeAuth = useKindeAuth();
 
-  if (to.meta.requiresAuth) {
-    console.log('requires auth!');
-    const isAuth = mainStore.user ? true : false;
-
-    if (!isAuth) {
-      return {
-        name: 'Login'
-      };
-    }
+  if (to.meta.requiresAuth && !kindeAuth.isAuthenticated.value) {
+    return {
+      name: 'Login',
+      // Optionally, add query params to redirect after login
+      query: { redirect: to.fullPath }
+    };
   }
 });
+
 export default router

@@ -1,42 +1,24 @@
-<template id="Login">
+<!-- src/views/Login.vue -->
+<template>
     <div>
         <h1>Login</h1>
-        <!-- prevent == prevent browser default behavior -->
-        <form @submit.prevent="login">
-        <input type="text" v-model="username" placeholder="Username" class="input"/>
-        <input type="password" v-model="password" placeholder="Password" class="input" />
-        <button class="btn" type="submit">Login</button>
-        </form>
+        <button @click="loginWithKinde">Login with Kinde</button>
     </div>
 </template>
 
 <script lang="ts">
-import { ref } from 'vue';
-import { useMainStore } from '../store';
-import { useRouter, useRoute } from 'vue-router';
+import { inject } from 'vue';
 
 export default {
     setup() {
-        const username = ref('');
-        const password = ref('');
+        const kindeAuth = inject('kindeAuth');
 
-        const router = useRouter();
-        const route = useRoute();
-
-        const login = () => {
-
-            const mainStore = useMainStore();
-
-            mainStore.user = username.value;
-
-            const redirectPath = route.query.redirect || { name: 'Admin' };
-            // could also use router.replace
-            router.push(redirectPath);
-            // alert(`Username: ${username.value} Password: ${password.value}`);
+        const loginWithKinde = () => {
+            kindeAuth.login();
         };
 
-        return { username, password, login };
+        return { loginWithKinde };
     },
-
 };
 </script>
+
