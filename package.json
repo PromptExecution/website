@@ -12,6 +12,7 @@
     "@iconscout/vue-unicons": "github:elasticdotventures/vue-unicons",
     "path": "^0.12.7",
     "pinia": "^2.1.7",
+    "v-idle-3": "^0.3.14",
     "vue": "^3.3.8",
     "vue-command": "^35.2.1",
     "vue-cookie-law": "github:elasticdotventures/vue-cookie-law",
