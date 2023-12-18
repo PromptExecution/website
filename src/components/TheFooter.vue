@@ -1,5 +1,8 @@
 <template>
   <div style="vertical-align: middle;">
+    <!--
+      define new icons in types/vue-icons.d.ts
+    -->
     <span class="footy">
       &nbsp;&nbsp;
       <a target="_blank" href="callto://+(61) 3 4238 2424">
