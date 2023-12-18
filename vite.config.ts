@@ -12,12 +12,12 @@ function customIconPathPlugin(): Plugin {
    resolveId(source) {
      if (source.startsWith('./icons/')) {
        const filePath = path.resolve(__dirname, 'node_modules/@iconscout/vue-unicons', source)+".vue";
-       console.log("modified "+filePath)
+      //  console.log("modified "+filePath)
        return filePath;
      }
-     else {
-      console.log(`skipped `+source)
-     }
+    //  else {
+    //   console.log(`skipped `+source)
+    //  }
    },
   };
  }
