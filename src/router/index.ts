@@ -10,6 +10,11 @@ import { useMainStore } from '@/store';
 
 const routes = [
   { path: '/', name: 'Home', component: Home },
+  // example of redirect: { name: 'Home'} or redirect: to=>'/' ( could be a function)
+  { path: '/home', redirect: "/" },
+  // or we could use alias
+  // { path: '/home', alias: "/", name: 'Home', component: Home },
+
   { path: '/about', name: 'About', component: ()=>import('@/views/About.vue') },
   {
     path: '/admin',

@@ -30,8 +30,9 @@ export default {
             mainStore.user = username.value;
 
             const redirectPath = route.query.redirect || { name: 'Admin' };
+            // could also use router.replace
             router.push(redirectPath);
-            alert(`Username: ${username.value} Password: ${password.value}`);
+            // alert(`Username: ${username.value} Password: ${password.value}`);
         };
 
         return { username, password, login };
