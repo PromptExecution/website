@@ -4,17 +4,24 @@ import path from 'path';
 import { Plugin } from 'vite';
 
 function customIconPathPlugin(): Plugin {
+  /*
+  this will fix the issue with vite rollup not finding the iconscout icons
+  */
   return {
-    name: 'custom-icon-path-plugin', // required, will show up in warnings and errors
-    resolveId(source) {
-      if (source.startsWith('@iconscout/vue-unicons')) {
-        // Modify the source path to include the `.vue` extension
-        return { id: source + '.vue', external: false };
-      }
-      return null; // Other imports should not be affected
-    },
+   name: 'custom-icon-path-plugin',
+   resolveId(source) {
+     if (source.startsWith('./icons/')) {
+       const filePath = path.resolve(__dirname, 'node_modules/@iconscout/vue-unicons', source)+".vue";
+       console.log("modified "+filePath)
+       return filePath;
+     }
+     else {
+      console.log(`skipped `+source)
+     }
+   },
   };
-}
+ }
+
 
 // https://vitejs.dev/config/
 export default defineConfig({
