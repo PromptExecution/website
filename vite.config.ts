@@ -6,6 +6,7 @@ import { Plugin } from 'vite';
 function customIconPathPlugin(): Plugin {
   /*
   this will fix the issue with vite rollup not finding the iconscout icons
+  see https://github.com/Iconscout/vue-unicons/issues/24
   */
   return {
    name: 'custom-icon-path-plugin',
