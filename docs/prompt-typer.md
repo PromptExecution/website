@@ -1,12 +1,18 @@
 prompt-typer
 
-Working on a Typescript Vue3 Vite project, there is a pinia store for tracking global state.
-On the homepage there is a component vue-command which offers a CLI experience, ability to run commands and simulate a terminal.
+REQUIREMENTS FOR "TYPER" ENHANCEMENT
+
+Enhance an existing TYPESCRIPT Vue3 Vite project, with pinia store.
+
+There is an existing component vue-command which offers a CLI experience,
+ability to run commands and simulate a terminal cli experience.
+
+Today we are going to extend vue-command so that it can be used as an interactive prompt-typer.
 
 
-Today we are going to extend vue-command so that it can be used as a prompt-typer.
 the task is in two stages:
     first we will wait for a pre-determined CONFIGURABLE timeout (~1.5s) of no keystokes or mouse-movements, which will trigger an "idle" Event
+
     during the idle event, we will inject text messages into the terminal
     the injection will need to be animated, so that it appears as if the user (or another user) is typing the text
     the content of the message for now will just be "hello\n" and that should execute the command in the terminal.
@@ -14,7 +20,17 @@ the task is in two stages:
     it would be nice if the injection could pause before sending "enter", also the ability to write something and then backspace (like a hint saying "Let's login!" and then removing the text and typing the command)
     at any point if the user starts moving the mouse or typing, the injection should be paused and the commands should be ignored until the user is idle & at a blank/empty line.
 
-I will provide two references, first is the documentation for vue-command component, and then some examples of CSS animations for typing:
+I will provide References:
+* documentation for vue-command component
+* examples of CSS animations for typing:
+
+
+
+
+
+
+
+----
 
 
 vue-command
