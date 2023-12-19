@@ -7,7 +7,8 @@ Enhance an existing TYPESCRIPT Vue3 Vite project, with pinia store.
 There is an existing component vue-command which offers a CLI experience,
 ability to run commands and simulate a terminal cli experience.
 
-Today we are going to extend vue-command so that it can be used as an interactive prompt-typer.
+Today we are going to extend vue-command so that it can be used as an interactive prompt-typer,
+it will (after an idle period) set the command query then execute it.
 
 
 the task is in two stages:
