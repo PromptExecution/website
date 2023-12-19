@@ -1,0 +1,21 @@
+name: Create Tag on package.json update
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # setting GH_TOKEN for the entire workflow
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: butlerlogic/action-autotag@1.1.2
+      env:
+        GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+      with:
+        strategy: "package"
+        tag_prefix: "v"
