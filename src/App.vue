@@ -5,7 +5,7 @@ import CookieBanner from './components/CookieBanner.vue';
 
 // import CommandLineInterface from './components/CommandLineInterface.vue';
 import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
-import TheXterm from './components/TheXterm.vue';
+import TheXTerm from './components/TheXTerm.vue';
 
 import { useMainStore } from './store';
 const mainStore = useMainStore();
@@ -25,7 +25,7 @@ import TheFooter from './components/TheFooter.vue';
   <div>
     <PromptExecutionLogo />
   </div>
-  <TheXterm />
+  <TheXTerm />
   <!-- <CommandLineInterface  /> -->
   <TheFooter />
 
