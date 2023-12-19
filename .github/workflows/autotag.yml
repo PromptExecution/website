@@ -3,7 +3,7 @@ name: Create Tag on package.json update
 on:
   push:
     branches:
-      - master
+      - main
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # setting GH_TOKEN for the entire workflow
