@@ -1,22 +1,49 @@
 <!--
+FILE: src/components/TheXTerm.vue
 
-    https://github.com/tzfun/vue-web-terminal?tab=readme-ov-file#Flash
+
+* implements https://github.com/tzfun/vue-web-terminal
 
 -->
+
+
+<template>
+  <div class="cli-container">
+  <Terminal ref="terminalRef" class="Terminal" name="my-terminal"
+    context="~"
+    context-suffix="!"
+    xcontextSuffix="&nbsp;$&nbsp;"
+    :init-log="initLog"
+    :command-store="commandStore"
+    @init-before="onInitBefore" @init-after="onInitAfter"
+    @before-execute-command="onBeforeExecuteCommand"
+    @exec-cmd="onExecCmd"
+   :show-header="false" :enable-example-hint="false" title="👋🏻" >
+  </Terminal>
+  </div>
+</template>
+
+
 
 
 <script setup lang="ts">
 import { inject,ref, onMounted, onUnmounted } from 'vue';
 import { useMainStore } from '../store';
-import Terminal from "vue-web-terminal"
+import Terminal, { api as TerminalApi } from "vue-web-terminal"
 // This style needs to be introduced in versions after 3.1.8 and 2.1.12.
 // There is no need to introduce theme styles in previous versions.
 // import 'vue-web-terminal/lib/theme/dark.css'
 // import 'vue-web-terminal/lib/theme/light.css'
 
-const mainStore = useMainStore();  // pinia
-let commandInput = ref('');
+interface TerminalType {
+  input: string;
+  // Define other properties and methods you expect to use
+  appendText: (text: string) => void;
+  executeCommand: () => void;
+}
 
+const mainStore = useMainStore();  // pinia
+const terminalRef = ref<TerminalType | null>(null);
 let idleTimer: number | undefined;
 const idleDelay = 2500; // 5 seconds
 
@@ -25,35 +52,76 @@ const resetAndStartIdleTimer = () => {
   idleTimer = setTimeout(onIdle, idleDelay) as unknown as number;
 };
 
-const onIdle = () => {
-  // TODO: Trigger this when the text animation when the user is idle for > 5s
-  console.log("onIdle ran");
-  animateTextInjection("hello\n");
-};
 
+const onIdle = () => {
+  //  true or false
+  let fullscreen = TerminalApi.isFullscreen('my-terminal')
+  console.log('User is idle. Starting text animation. '+fullscreen);
+  if (terminalRef.value) {
+    // terminalRef.value.input = ''; // Clear existing input
+    // animateTextInjection('hello\n');
+
+
+    TerminalApi.execute('my-terminal', 'hello')
+  }
+};
 
 
 let typingTimer: number | undefined;
 const typingDelay = 100; // milliseconds between each character
 
+/*
 const animateTextInjection = (text: string, i: number = 0) => {
-  if (i < text.length) {
-    commandInput.value += text.charAt(i);
-    i++;
-    typingTimer = setTimeout(() => animateTextInjection(text, i), typingDelay) as unknown as number;
+  if (!terminalRef.value || i >= text.length) return;
+
+  let currentText = terminalRef.value.input + text.charAt(i);
+  TerminalApi.pushMessage('my-terminal', { content: currentText, type: 'normal' });
+
+  if (i === text.length - 1) {
+    // Executing the command and clearing the input
+    onExecCmd('commandKey', currentText, successCallback, failedCallback);
+    TerminalApi.pushMessage('my-terminal', { content: '', type: 'normal' });
   } else {
-    // Execute the command after the text has been typed
-    commandInput.value;
-    simulateEnterKeyPress();
-    console.log("didSimulateEnterKeyPress")
-    // Use this method to inject commands
-    // executeCommand(commandInput.value);
-    // if (vueCommandRef.value) {
-    //   vueCommandRef.value.executeCommand(command);
-    //   }
+    setTimeout(() => animateTextInjection(text, i + 1), typingDelay);
+  }
+};
+*/
+// Function to simulate the typing of a command
+const animateTextInjection = (text: string, i: number = 0) => {
+  if (!terminalRef.value || i >= text.length) return;
+
+  terminalRef.value.input += text.charAt(i); // Simulate typing
+
+  if (i === text.length - 1) {
+    // Once the entire command is typed, trigger the command execution
+    onExecCmd('customKey', terminalRef.value.input, successCallback, failedCallback);
+    terminalRef.value.input = ''; // Clear input after "execution"
+  } else {
+    // Continue typing the next character
+    setTimeout(() => animateTextInjection(text, i + 1), typingDelay);
   }
 };
 
+
+// Define the success callback
+const successCallback = (result: any) => {
+  // Handle successful command execution
+  console.log('Command executed successfully:', result);
+};
+
+// Define the failed callback
+const failedCallback = (errorMessage: string) => {
+  // Handle failed command execution
+  console.error('Command execution failed:', errorMessage);
+};
+
+const stopTextAnimation = () => {
+  if (typingTimer !== undefined) {
+    clearTimeout(typingTimer);
+    typingTimer.value = undefined;
+    console.log('Text animation stopped');
+  }
+};
 
 // Function to clear the ongoing text animation
 const clearTextAnimation = () => {
@@ -63,25 +131,40 @@ const clearTextAnimation = () => {
   }
 };
 
+const onInitBefore = () => {
+  console.log('Terminal is about to be initialized');
+};
+
+const onInitAfter = () => {
+  console.log('Terminal has been initialized');
+  //
+};
+
+const onBeforeExecuteCommand = (cmdKey, command: Command, name: String) => {
+  console.log('Command is about to be executed:', command);
+};
+
+
 // const executeCommand = inject('executeCommand') as (command: string) => void;
 
 const vueCommandRef = ref(null);
 
-
-// Simulate Enter key press
-const simulateEnterKeyPress = () => {
-};
-
+// Update your event listeners to stop animation on activity
+window.addEventListener('mousemove', () => {
+  resetAndStartIdleTimer();
+  stopTextAnimation();
+});
+window.addEventListener('keypress', () => {
+  resetAndStartIdleTimer();
+  stopTextAnimation();
+});
 
 onMounted(() => {
-  window.addEventListener('mousemove', resetAndStartIdleTimer);
-  window.addEventListener('keydown', resetAndStartIdleTimer);
   resetAndStartIdleTimer(); // Start the timer when the component is mounted
 });
 
 onUnmounted(() => {
-  window.removeEventListener('mousemove', resetAndStartIdleTimer);
-  window.removeEventListener('keydown', resetAndStartIdleTimer);
+  stopTextAnimation(); // Stop the text animation when the component is destroyed
   clearTimeout(idleTimer); // Clear the timer when the component is destroyed
   clearTextAnimation(); // Clear the text animation when the component is destroyed
 });
@@ -100,98 +183,83 @@ const onExecCmd = (
 ) => {
   if (key === 'fail') {
     failed('Something wrong!!!');
-  } else {
+  }
+  else if (key === "hello") {
+    success({
+      type: 'normal',
+      class: 'success',
+      tag: '😁',
+      content: 'world'
+    })
+  }
+  else {
     let allClass = ['success', 'error', 'system', 'info', 'warning'];
     let clazz = allClass[Math.floor(Math.random() * allClass.length)];
     success({
       type: 'normal',
       class: clazz,
-      tag: '成功',
+      tag: '😁',
       content: command
     });
   }
 };
+
+const initLog = [
+  {
+    type: 'normal',
+    content: "Welcome to PromptExecution"
+  },
+  {
+    type: 'normal',
+    content: "<i>Type help</i>"
+  }
+]
+
+
+const commandStore = [
+  {
+    key: 'hello',
+    title: 'Prints "world" to the terminal.',
+    usage: 'hello',
+    example: [
+      {
+        cmd: 'hello',
+        des: 'Prints "world" to the terminal.'
+      }
+    ],
+    exec: () => {
+      pushMessage({
+        type: 'normal',
+        content: 'world'
+      })
+    }
+  }
+]
 
 </script>
 
 
 
 
-<template>
-  <div id="app" class="Terminal">
-  <Terminal name="my-terminal" :show-header="false" :enable-example-hint="false" title="👋🏻" >
-    <template #title>Command Line Interface v0.2 -- type "help" for instructions</template>
-    <template #prompt>
-    <span class="prompt">
-      <span class="prompt-user">guest</span>
-      <span class="prompt-path">~</span>
-      <span class="prompt-symbol">$&nbsp;</span>
-    </span>
-    </template>
-    <template #show-help>true</template>
-    <template #help-text></template>
-    <template #invert>true</template>
-    <template #font></template>
-  </Terminal>
-  </div>
-</template>
-
 
 <style>
 
-/* If Terminal component has its own alignment, target it specifically */
-Terminal {
-  text-align: left;  /* This assumes the component can be targeted like this */
-}
 
 .cli-container {
   /* Adjust the border-radius as needed */
+  /* overflow: hidden; /* Ensures that the child elements adhere to the container's border radius */
+  background-color: black;
   border-radius: 10px; /* This will give rounded corners to the container */
-  overflow: hidden; /* Ensures that the child elements adhere to the container's border radius */
+  padding: 10px;
+  height: 200px;
 }
 
-body, html, #app {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
+
+.Terminal {
+  margin: 3;
+  padding: 3;
   text-align: left;
 }
 
-:root {
-    --t-main-background-color: #fff;
-    --t-main-font-color: #000;
-    --t-window-box-shadow: 0 0 40px 1px rgb(0 0 0 / 20%);
-    --t-header-background-color: #4b474c;
-    --t-header-font-color: white;
-    --t-tag-font-color: #fff;
-    --t-cursor-color: #000;
-    --t-cmd-key-color: #834dff;
-    --t-cmd-arg-color: #c0c0ff;
-    --t-cmd-splitter-color: #808085;
-    --t-link-color: #02505e;
-    --t-link-hover-color: #17b2d2;
-    --t-table-border: 1px dashed #565151;
-    --t-selection-font-color: white;
-    --t-selection-background-color: #2a2626;
-    --t-cmd-help-background-color: white;
-    --t-cmd-help-code-font-color: rgba(0,0,0,.8);
-    --t-cmd-help-code-background-color: #f7f7f9;
-    --t-cmd-help-msg-color: #c5a5a5;
-    --t-cmd-help-box-shadow: 0px 0px 0px 4px rgb(0 0 0 / 20%);
-    --t-text-editor-floor-background-color: rgba(0,0,0,.1);
-    --t-text-editor-floor-close-btn-color: #9a7070;
-    --t-text-editor-floor-save-btn-color: #00b10e;
-    --t-text-editor-floor-btn-hover-color: #652222;
-    --t-json-background-color: rgba(0, 0, 0, 0);
-    --t-json-value-obj-color: #bdadad;
-    --t-json-value-bool-color: #cdc83c;
-    --t-json-value-number-color: #a625be;
-    --t-json-ellipsis-background-color: #f5f5f5;
-    --t-json-more-background-webkit: -webkit-linear-gradient(top, rgba(0, 0, 0, 0) 20%, rgb(255 255 255 / 10%) 100%);
-    --t-json-more-background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 20%, rgb(255 255 255 / 10%) 100%);
-    --t-json-deep-selector-border-color: rgb(249 249 249 / 52%);
-    --t-code-default-background-color: rgb(227 239 248);
-}
 
 </style>
