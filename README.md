@@ -1,9 +1,10 @@
-# Welcome
+# 👋 Welcome
 
 ```
 make dev
 make build
 ```
+
 
 ## Icons
 https://github.com/iconscout/unicons
