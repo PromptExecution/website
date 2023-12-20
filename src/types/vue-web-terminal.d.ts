@@ -1,4 +1,5 @@
 // src/types/vue-web-terminal.d.ts
+declare module 'vue-web-terminal' {
 
 export interface EditorConfig {
     open: boolean
@@ -289,4 +290,6 @@ export class TerminalApi {
 export interface EditorSetting {
     content: string,
     onClose: Function
+}
+
 }

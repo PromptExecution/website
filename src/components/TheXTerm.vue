@@ -11,8 +11,7 @@ FILE: src/components/TheXTerm.vue
   <div class="cli-container">
   <Terminal ref="terminalRef" class="Terminal" name="my-terminal"
     context="~"
-    context-suffix="!"
-    xcontextSuffix="&nbsp;$&nbsp;"
+    context-suffix=" $ "
     :init-log="initLog"
     :command-store="commandStore"
     @init-before="onInitBefore" @init-after="onInitAfter"
@@ -27,25 +26,20 @@ FILE: src/components/TheXTerm.vue
 
 
 <script setup lang="ts">
-import { inject,ref, onMounted, onUnmounted } from 'vue';
-import { useMainStore } from '../store';
-import Terminal, { api as TerminalApi } from "vue-web-terminal"
+import { onMounted, onUnmounted } from 'vue'; // inject
+// import { useMainStore } from '../store';
+import Terminal, { Command, TerminalApi } from "vue-web-terminal"
 // This style needs to be introduced in versions after 3.1.8 and 2.1.12.
 // There is no need to introduce theme styles in previous versions.
 // import 'vue-web-terminal/lib/theme/dark.css'
 // import 'vue-web-terminal/lib/theme/light.css'
 
-interface TerminalType {
-  input: string;
-  // Define other properties and methods you expect to use
-  appendText: (text: string) => void;
-  executeCommand: () => void;
-}
 
-const mainStore = useMainStore();  // pinia
-const terminalRef = ref<TerminalType | null>(null);
+// const mainStore = useMainStore();  // pinia
 let idleTimer: number | undefined;
 const idleDelay = 2500; // 5 seconds
+
+const TerminalApiInstance = TerminalApi as any as TerminalApi;
 
 const resetAndStartIdleTimer = () => {
   clearTimeout(idleTimer);
@@ -55,20 +49,14 @@ const resetAndStartIdleTimer = () => {
 
 const onIdle = () => {
   //  true or false
-  let fullscreen = TerminalApi.isFullscreen('my-terminal')
-  console.log('User is idle. Starting text animation. '+fullscreen);
-  if (terminalRef.value) {
-    // terminalRef.value.input = ''; // Clear existing input
-    // animateTextInjection('hello\n');
-
-
-    TerminalApi.execute('my-terminal', 'hello')
-  }
+  // let fullscreen = TerminalApi.isFullscreen('my-terminal')
+  console.log('User is idle. Starting text animation.');
+  TerminalApiInstance.execute('my-terminal', 'hello')
 };
 
 
-let typingTimer: number | undefined;
-const typingDelay = 100; // milliseconds between each character
+// let typingTimer: number | undefined;
+// const typingDelay = 100; // milliseconds between each character
 
 /*
 const animateTextInjection = (text: string, i: number = 0) => {
@@ -87,6 +75,7 @@ const animateTextInjection = (text: string, i: number = 0) => {
 };
 */
 // Function to simulate the typing of a command
+/*
 const animateTextInjection = (text: string, i: number = 0) => {
   if (!terminalRef.value || i >= text.length) return;
 
@@ -101,9 +90,11 @@ const animateTextInjection = (text: string, i: number = 0) => {
     setTimeout(() => animateTextInjection(text, i + 1), typingDelay);
   }
 };
+*/
 
 
 // Define the success callback
+/*
 const successCallback = (result: any) => {
   // Handle successful command execution
   console.log('Command executed successfully:', result);
@@ -114,21 +105,22 @@ const failedCallback = (errorMessage: string) => {
   // Handle failed command execution
   console.error('Command execution failed:', errorMessage);
 };
+*/
 
 const stopTextAnimation = () => {
-  if (typingTimer !== undefined) {
-    clearTimeout(typingTimer);
-    typingTimer.value = undefined;
+  // if (typingTimer !== undefined) {
+  //   clearTimeout(typingTimer);
+  //   typingTimer = undefined;
     console.log('Text animation stopped');
-  }
+  // }
 };
 
 // Function to clear the ongoing text animation
 const clearTextAnimation = () => {
-  if (typingTimer !== undefined) {
-    clearTimeout(typingTimer);
-    typingTimer = undefined;
-  }
+  // if (typingTimer !== undefined) {
+  //   clearTimeout(typingTimer);
+  //   typingTimer = undefined;
+  // }
 };
 
 const onInitBefore = () => {
@@ -140,14 +132,14 @@ const onInitAfter = () => {
   //
 };
 
-const onBeforeExecuteCommand = (cmdKey, command: Command, name: String) => {
+// const onBeforeExecuteCommand = (cmdKey, command: Command, name: String) => {
+const onBeforeExecuteCommand = ({ command }: { command: Command }) => {
   console.log('Command is about to be executed:', command);
 };
 
 
 // const executeCommand = inject('executeCommand') as (command: string) => void;
-
-const vueCommandRef = ref(null);
+// const vueCommandRef = ref(null);
 
 // Update your event listeners to stop animation on activity
 window.addEventListener('mousemove', () => {
@@ -228,9 +220,9 @@ const commandStore = [
       }
     ],
     exec: () => {
-      pushMessage({
+      TerminalApiInstance.pushMessage("my-terminal",{
         type: 'normal',
-        content: 'world'
+        content: 'world',
       })
     }
   }
@@ -249,6 +241,7 @@ const commandStore = [
   /* Adjust the border-radius as needed */
   /* overflow: hidden; /* Ensures that the child elements adhere to the container's border radius */
   background-color: black;
+  color: white;
   border-radius: 10px; /* This will give rounded corners to the container */
   padding: 10px;
   height: 200px;
