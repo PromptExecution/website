@@ -1,0 +1,35 @@
+# https://github.com/oven-sh/setup-bun
+
+name: Deploy Bun Project to GitHub Pages
+
+on:
+  push:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+            bun-version: latest # or "latest", "canary", <sha>
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Build Project
+        run: bun run build
+
+      # - name: Deploy to GitHub Pages
+      #   uses: peaceiris/actions-gh-pages@v3
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     publish_dir: ./dist
+      #     publish_branch: gh-pages
+
+          #https://<username>.github.io/<repository-name>/<branch-name>
+          #For example, if you push to the feature-branch branch, the built files will be published to the gh-pages branch and you can preview the project at the following URL:
+          #https://<username>.github.io/<repository-name>/feature-branch
+

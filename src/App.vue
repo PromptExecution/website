@@ -3,8 +3,9 @@
 import { onMounted } from 'vue';
 import CookieBanner from './components/CookieBanner.vue';
 
-import CommandLineInterface from './components/CommandLineInterface.vue';
+// import CommandLineInterface from './components/CommandLineInterface.vue';
 import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
+import TheXTerm from './components/TheXTerm.vue';
 
 import { useMainStore } from './store';
 const mainStore = useMainStore();
@@ -24,7 +25,8 @@ import TheFooter from './components/TheFooter.vue';
   <div>
     <PromptExecutionLogo />
   </div>
-  <CommandLineInterface  />
+  <TheXTerm />
+  <!-- <CommandLineInterface  /> -->
   <TheFooter />
 
   <CookieBanner v-if="!mainStore.isCookieConsentSet" />

@@ -1,3 +1,12 @@
+/*
+src/types/vue-icons.d.ts
+*/
+
+declare module '@iconscout/vue-unicons/icons/uil-linkedin.vue';
+declare module '@iconscout/vue-unicons/icons/uil-hunting.vue';
+declare module '@iconscout/vue-unicons/icons/uil-mailbox.vue';
+declare module '@iconscout/vue-unicons/icons/uil-phone.vue';
+
 declare module '@iconscout/vue-unicons' {
   import { DefineComponent } from 'vue';
 
