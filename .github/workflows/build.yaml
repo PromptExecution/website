@@ -13,12 +13,14 @@ jobs:
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
+        with:
+            bun-version: latest # or "latest", "canary", <sha>
 
       - name: Install Dependencies
         run: bun install
 
       - name: Build Project
-        run: bun build
+        run: bun run build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
