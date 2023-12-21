@@ -26,7 +26,7 @@ export const useSocketStore = (app: App<Element>) => {
         this.isConnected = true;
         // 连接成功时启动定时发送心跳消息，避免被服务器断开连接
         this.heartBeatTimer = window.setInterval(() => {
-          const message = "心跳消息";
+          const message = "心跳消息";  // Xīntiào xiāoxī : Heartbeat message
           this.isConnected &&
             app.config.globalProperties.$socket.sendObj({
               "verb": "begin",
@@ -40,7 +40,7 @@ export const useSocketStore = (app: App<Element>) => {
         // 连接关闭时停掉心跳消息
         window.clearInterval(this.heartBeatTimer);
         this.heartBeatTimer = 0;
-        console.log("连接已断开: " + new Date());
+        console.log("连接已断开: " + new Date());   // The line is disconnected
         console.log(event);
       },
       // 发生错误
@@ -50,6 +50,7 @@ export const useSocketStore = (app: App<Element>) => {
       // 收到服务端发送的消息
       SOCKET_ONMESSAGE(message: any) {
         this.message = message;
+        console.log(message)
       },
       // 自动重连
       SOCKET_RECONNECT(count: any) {
