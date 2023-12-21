@@ -1,3 +1,4 @@
+// src/store/pinia/useSocketStore.ts
 import { App } from "vue";
 import { defineStore } from "pinia";
 import { setupStore } from "@/store/pinia/store";

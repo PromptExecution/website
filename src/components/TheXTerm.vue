@@ -1,7 +1,6 @@
 <!--
 FILE: src/components/TheXTerm.vue
 
-
 * implements https://github.com/tzfun/vue-web-terminal
 
 -->
@@ -31,7 +30,7 @@ import { getCurrentInstance, ComponentInternalInstance } from "vue";
 import Terminal, { Command, TerminalApi } from "vue-web-terminal"
 // This style needs to be introduced in versions after 3.1.8 and 2.1.12.
 // There is no need to introduce theme styles in previous versions.
-// import 'vue-web-terminal/lib/theme/dark.css'
+import 'vue-web-terminal/lib/theme/dark.css'
 // import 'vue-web-terminal/lib/theme/light.css'
 
 
