@@ -2,7 +2,7 @@
 <template>
   <div class="cookie-banner">
     <!-- Cookie banner content -->
-    🍪 Do you want milk with your cookies? 
+    🍪 Do you want milk with your cookies?
     <button @click="handleConsent" class="accept-button">Accept Cookies</button>
     <button @click="handleReject" class="reject-button">Reject Cookies</button>
 
@@ -11,7 +11,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { useMainStore } from '../store';
+import { useMainStore } from '@/store/mainStore';
 import { useState } from 'vue-gtag-next';
 
 export default defineComponent({

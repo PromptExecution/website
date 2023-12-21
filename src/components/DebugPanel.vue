@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import { useMainStore } from '../store';
+import { useMainStore } from '@/store/mainStore';
 
 const mainStore = useMainStore();
 const state = mainStore.$state;

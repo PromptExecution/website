@@ -1,13 +1,11 @@
 <!-- src/App.vue -->
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import CookieBanner from './components/CookieBanner.vue';
+import CookieBanner from '@/components/CookieBanner.vue';
+import PromptExecutionLogo from '@/components/PromptExecutionLogo.vue';
+import TheXTerm from '@/components/TheXTerm.vue';
+import { useMainStore } from '@/store/mainStore';
 
-// import CommandLineInterface from './components/CommandLineInterface.vue';
-import PromptExecutionLogo from './components/PromptExecutionLogo.vue';
-import TheXTerm from './components/TheXTerm.vue';
-
-import { useMainStore } from './store';
 const mainStore = useMainStore();
 
 // Example of how you might control the visibility of the banner

@@ -7,7 +7,7 @@ import VueCommand from "vue-command";
 // const VueCommand = require('vue-command/dist/vue-command.common.js');
 import "vue-command/dist/vue-command.css";
 
-import { useMainStore } from '../store';
+import { useMainStore } from '@/store/mainStore';
 import { inject, ref, onMounted, onUnmounted } from 'vue';
 
 

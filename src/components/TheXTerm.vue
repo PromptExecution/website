@@ -24,13 +24,10 @@ FILE: src/components/TheXTerm.vue
 
 
 
-
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'; // inject
-// import { defineComponent } from "vue";
 import { getCurrentInstance, ComponentInternalInstance } from "vue";
 
-// import { useMainStore } from '../store';
 import Terminal, { Command, TerminalApi } from "vue-web-terminal"
 // This style needs to be introduced in versions after 3.1.8 and 2.1.12.
 // There is no need to introduce theme styles in previous versions.
@@ -38,7 +35,6 @@ import Terminal, { Command, TerminalApi } from "vue-web-terminal"
 // import 'vue-web-terminal/lib/theme/light.css'
 
 
-// const mainStore = useMainStore();  // pinia
 let idleTimer: number | undefined;
 const idleDelay = 2500; // 5 seconds
 
