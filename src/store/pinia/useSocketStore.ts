@@ -1,7 +1,7 @@
 import { App } from "vue";
 import { defineStore } from "pinia";
 import { setupStore } from "@/store/pinia/store";
-import { SocketStore } from "@/type/PiniaType";
+import { SocketStore } from "@/store/pinia/PiniaType";
 
 export const useSocketStore = (app: App<Element>) => {
   return defineStore({
