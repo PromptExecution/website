@@ -14,7 +14,7 @@ export const useSocketStore = (app: App<Element>) => {
       // 重新连接错误
       reconnectError: false,
       // 心跳消息发送时间
-      heartBeatInterval: 50000,
+      heartBeatInterval: 50,
       // 心跳定时器
       heartBeatTimer: 0
     }),
@@ -29,7 +29,7 @@ export const useSocketStore = (app: App<Element>) => {
           const message = "心跳消息";
           this.isConnected &&
             app.config.globalProperties.$socket.sendObj({
-              code: 200,
+              "verb": "begin",
               msg: message
             });
         }, this.heartBeatInterval);
