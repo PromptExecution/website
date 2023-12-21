@@ -27,6 +27,9 @@ FILE: src/components/TheXTerm.vue
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'; // inject
+// import { defineComponent } from "vue";
+import { getCurrentInstance, ComponentInternalInstance } from "vue";
+
 // import { useMainStore } from '../store';
 import Terminal, { Command, TerminalApi } from "vue-web-terminal"
 // This style needs to be introduced in versions after 3.1.8 and 2.1.12.
@@ -153,7 +156,12 @@ window.addEventListener('keypress', () => {
 
 onMounted(() => {
   resetAndStartIdleTimer(); // Start the timer when the component is mounted
-});
+
+  const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+  setTimeout(() => {
+      if (proxy == null) return;
+      proxy.$connect();
+    }, 100);});
 
 onUnmounted(() => {
   stopTextAnimation(); // Stop the text animation when the component is destroyed
