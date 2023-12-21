@@ -11,6 +11,7 @@
   "dependencies": {
     "@achrinza/node-ipc": "^10.1.10",
     "@iconscout/vue-unicons": "github:elasticdotventures/vue-unicons",
+    "mitt": "^3.0.1",
     "path": "^0.12.7",
     "pinia": "^2.1.7",
     "v-idle-3": "^0.3.14",

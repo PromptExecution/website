@@ -3,8 +3,11 @@ import { App } from "vue";
 import { defineStore } from "pinia";
 import { setupStore } from "@/store/pinia/store";
 import { SocketStore } from "@/store/pinia/typeOfSocketStore";
+import { emitter } from "@/eventBus";
 
 export const useSocketStore = (app: App<Element>) => {
+
+
   return defineStore({
     id: "socket",
     state: (): SocketStore => ({
@@ -30,12 +33,15 @@ export const useSocketStore = (app: App<Element>) => {
       sendMessage(message: string) {
         // Add the message to the outgoing queue
         this.outgoingMessages.push(message);
+        console.log("sent message: " + message);
 
         // Check if the WebSocket is connected, if not, establish a connection here
-        if (!this.isConnected) {
+        if (this.isConnected) {
           // Initialize WebSocket and connect here
           // On successful connection, send pending messages
           this.sendPendingMessages();
+        } else {
+          console.log("WebSocket NOT connected queue len:" + this.outgoingMessages.length);
         }
       },
       // Function to send pending messages
@@ -60,9 +66,12 @@ export const useSocketStore = (app: App<Element>) => {
 
       // 连接打开
       SOCKET_ONOPEN(event: any) {
-        console.log("successful websocket connection");
         app.config.globalProperties.$socket = event.currentTarget;
         this.isConnected = true;
+
+        this.sendMessage("👋🏻");
+        emitter.emit("webSocket.open", event);
+        console.log("successful websocket connection");
         // 连接成功时启动定时发送心跳消息，避免被服务器断开连接
         // this.heartBeatTimer = window.setInterval(() => {
         //   const message = "心跳消息";  // Xīntiào xiāoxī : Heartbeat message
@@ -75,6 +84,7 @@ export const useSocketStore = (app: App<Element>) => {
       },
       // 连接关闭
       SOCKET_ONCLOSE(event: any) {
+        emitter.emit("webSocket.close", event);
         this.isConnected = false;
         // 连接关闭时停掉心跳消息
         window.clearInterval(this.heartBeatTimer);
@@ -84,23 +94,28 @@ export const useSocketStore = (app: App<Element>) => {
       },
       // 发生错误
       SOCKET_ONERROR(event: any) {
+        emitter.emit("webSocket.error", event);
         console.error(event);
       },
       // 收到服务端发送的消息
       SOCKET_ONMESSAGE(message: any) {
         this.message = message;
-        console.log(message)
-      },
+        emitter.emit("webSocket.onMessage", message);
+        console.log(message);      },
       // 自动重连
       SOCKET_RECONNECT(count: any) {
+        emitter.emit("webSocket.Reconnect", count)
         console.info("消息系统重连中...", count);
       },
       // 重连错误
       SOCKET_RECONNECT_ERROR() {
+        emitter.emit("webSocket.ReconnectError")
         this.reconnectError = true;
       }
     }
   })();
+
+
 };
 
 // Need to be used outside the setup

@@ -26,6 +26,9 @@ FILE: src/components/TheXTerm.vue
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'; // inject
 import { getCurrentInstance, ComponentInternalInstance } from "vue";
+// import { useSocketStoreWithOut } from '@/store/pinia/useSocketStore'
+// In any module where you want to emit an event
+import { emitter } from "@/eventBus";
 
 import Terminal, { Command, TerminalApi } from "vue-web-terminal"
 // This style needs to be introduced in versions after 3.1.8 and 2.1.12.
@@ -44,11 +47,23 @@ const resetAndStartIdleTimer = () => {
   idleTimer = setTimeout(onIdle, idleDelay) as unknown as number;
 };
 
+const handleMessage = (event) => {
+    // Handle the incoming message
+    console.log("handleMessage:", event);
+    TerminalApiInstance.pushMessage("my-terminal",{
+        type: 'json',
+        content: JSON.stringify(event),
+      })
+    // TerminalApiInstance.execute('my-terminal', eventName);
+
+
+};
+
 
 const onIdle = () => {
   //  true or false
   // let fullscreen = TerminalApi.isFullscreen('my-terminal')
-  console.log('User is idle. Starting text animation.');
+  console.log('User is idle. execute!');
   TerminalApiInstance.execute('my-terminal', 'hello')
 };
 
@@ -109,7 +124,7 @@ const stopTextAnimation = () => {
   // if (typingTimer !== undefined) {
   //   clearTimeout(typingTimer);
   //   typingTimer = undefined;
-    console.log('Text animation stopped');
+  //  console.log('Text animation stopped');
   // }
 };
 
@@ -151,6 +166,9 @@ window.addEventListener('keypress', () => {
 
 onMounted(() => {
   resetAndStartIdleTimer(); // Start the timer when the component is mounted
+
+  emitter.on("webSocket.open", handleMessage);
+  emitter.on("webSocket.onMessage", handleMessage);
 
   const { proxy } = getCurrentInstance() as ComponentInternalInstance;
   setTimeout(() => {
