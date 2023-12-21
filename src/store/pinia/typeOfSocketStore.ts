@@ -9,4 +9,7 @@ export type SocketStore = {
   heartBeatInterval: number;
   // 心跳定时器
   heartBeatTimer: number;
+
+  incomingMessages: string[]; // Queue for incoming messages
+  outgoingMessages: string[]; // Queue for outgoing messages
 };
