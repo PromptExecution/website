@@ -1,3 +1,4 @@
+# pyproject.toml
 [tool.poetry]
 name = "promptexecutionwebsite"
 version = "0.1.0"
@@ -8,12 +9,23 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 pillow = "^10.1.0"
+wasmer = "^1.1.0"
+wasmer-compiler-cranelift = "^1.1.0"
+wasmer-compiler-llvm = "^1.1.0"
+wasmer-compiler-singlepass = "^1.1.0"
+pywasm3 = "^0.5.0"
 
 [tool.poetry.scripts]
 promptexec = "evlib.build:main"
+wasmexec = "websockwasm.build:main"
 
 [[tool.poetry.packages]]
 include = "evlib"
+from = "pysrc"
+
+
+[[tool.poetry.packages]]
+include = "websockwasm"
 from = "pysrc"
 
 [build-system]

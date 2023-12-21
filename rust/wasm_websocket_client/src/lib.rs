@@ -8,7 +8,7 @@ use log;
 pub async fn run() -> Result<(), JsValue> {
     wasm_logger::init(wasm_logger::Config::default());
 
-    let (mut ws, mut wsio) = WsMeta::connect("ws://[YOUR_WEBSOCKET_SERVER]", None).await
+    let (mut ws, mut wsio) = WsMeta::connect("ws://fung1.lan:8080", None).await
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let msg = WsMessage::Text(String::from(r#"{"verb":"begin"}"#));
