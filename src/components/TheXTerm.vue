@@ -205,6 +205,15 @@ const onExecCmd = (
       content: 'world'
     })
   }
+  else if (key === "meet") {
+    // TODO: open a new window
+    success({
+      type: 'normal',
+      class: 'success',
+      tag: '👋🏻',
+      content: '<a href="https://calendar.google.com/calendar/appointments/schedules/AcZssZ1PPmxcLlDdPZF1BMHQaADaO7or9b7sXrljq7co6Fu3bZLO9x_YmzH8JkynDEwzSrgdqh5Y-4s1">calendar</a>'
+    })
+  }
   else {
     let allClass = ['success', 'error', 'system', 'info', 'warning'];
     let clazz = allClass[Math.floor(Math.random() * allClass.length)];
@@ -245,6 +254,21 @@ const commandStore = [
         type: 'normal',
         content: 'world',
       })
+    }
+  },
+  {
+    key: 'meet',
+    title: 'Provides a meeting link.',
+    usage: 'meet',
+    example: [
+      {
+        cmd: 'meet',
+        des: 'Lets meet',
+      }
+    ],
+    exec: () => {
+      // open a popup to the calendar
+      //
     }
   }
 ]
