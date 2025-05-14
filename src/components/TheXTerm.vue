@@ -47,7 +47,7 @@ const resetAndStartIdleTimer = () => {
   idleTimer = setTimeout(onIdle, idleDelay) as unknown as number;
 };
 
-const handleMessage = (event) => {
+const handleMessage = (event: any) => {
     // Handle the incoming message
     console.log("handleMessage:", event);
     TerminalApiInstance.pushMessage("my-terminal",{
