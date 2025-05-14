@@ -1,11 +1,11 @@
-// src/store.js
+// src/store/mainStore.ts
 import { defineStore } from 'pinia'
 
 export const useMainStore = defineStore('main', {
   state: () => ({
     count: 0,
     // cookieConsent: null // null, 'accepted', or 'rejected'
-    cookieConsent: localStorage.getItem('cookieConsent'), 
+    cookieConsent: localStorage.getItem('cookieConsent'),
     showLogin: false,
     showDebugPanel: false,
   }),

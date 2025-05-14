@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@achrinza/node-ipc": "^10.1.10",
     "@iconscout/vue-unicons": "github:elasticdotventures/vue-unicons",
+    "mitt": "^3.0.1",
     "path": "^0.12.7",
     "pinia": "^2.1.7",
     "v-idle-3": "^0.3.14",
@@ -17,7 +19,8 @@
     "vue-cookie-law": "github:elasticdotventures/vue-cookie-law",
     "vue-cookie-next": "^1.3.0",
     "vue-gtag-next": "^1.14.0",
-    "vue-web-terminal": "3.2.5-Beta"
+    "vue-native-websocket-vue3": "^3.1.7",
+    "vue-web-terminal": "3.2.2"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.0",
