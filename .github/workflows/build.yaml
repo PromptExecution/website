@@ -14,10 +14,10 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
-            bun-version: latest # or "latest", "canary", <sha>
+            bun-version: 1.0.18 # Pin to working version
 
       - name: Install Dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Build Project
         run: bun run build
