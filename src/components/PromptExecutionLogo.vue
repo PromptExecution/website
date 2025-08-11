@@ -9,8 +9,8 @@
         <div class="logo-container">
             <img src="/PromptExecution-LogoV2-full-transparent.webp" class="logo-head" alt="Cybernetic Head"/>
             <div class="text-container">
-                <img src="/title-promptexecution.svg" class="logo-title" alt="Prompt Execution"/>
-                <img src="/subtitle-cognitive-process-automation.svg" class="logo-subtitle" alt="Cognitive Robotic Process Automation"/>
+                <div class="logo-title">PROMPT EXECUTION</div>
+                <div class="logo-subtitle">COGNITIVE ROBOTIC PROCESS AUTOMATION</div>
             </div>
         </div>
     </div>
@@ -18,11 +18,28 @@
 
 <style scoped>
 
-/* Font imports for logo SVGs */
+/* Font imports for logo text */
 @import url('https://db.onlinewebfonts.com/c/3bc7046035df293d6486e481022b043e?family=Patron');
 
 @font-face {
+  font-family: 'Patron-PersonalUse-Regular';
+  src: url('https://db.onlinewebfonts.com/c/3bc7046035df293d6486e481022b043e?family=Patron') format('truetype');
+}
+
+@font-face {
+  font-family: 'Patron - Personal Use';
+  src: url('https://db.onlinewebfonts.com/c/3bc7046035df293d6486e481022b043e?family=Patron') format('truetype');
+}
+
+@font-face {
   font-family: 'ExodarOutline';
+  src: url('/fonts/Exodar-Outline.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Exodar-Outline';
   src: url('/fonts/Exodar-Outline.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
@@ -53,15 +70,25 @@
 }
 
 .logo-title {
-    width: 696px;
-    height: 60px;
-    padding: 0 4px;
-    border-radius: 5px;
+    font-family: 'Patron-PersonalUse-Regular', 'Patron - Personal Use', 'Patron', serif;
+    font-size: 67px;
+    font-weight: normal;
+    color: black;
+    white-space: nowrap;
+    line-height: 1.0;
+    letter-spacing: 0.02em;
 }
 
 .logo-subtitle {
-    width: 696px;
-    height: 30px;
+    font-family: 'ExodarOutline', 'Exodar-Outline', monospace;
+    font-size: 41px;
+    font-weight: normal;
+    color: transparent;
+    -webkit-text-stroke: 1.31px rgb(117, 126, 127);
+    text-stroke: 1.31px rgb(117, 126, 127);
+    white-space: nowrap;
+    line-height: 1.0;
+    letter-spacing: 0.02em;
 }
 
 @keyframes rainbow-pulse {
