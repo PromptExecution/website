@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(bun install:*)",
-      "Bash(bun run:*)"
+      "Bash(bun run:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)"
     ],
     "deny": []
   }
