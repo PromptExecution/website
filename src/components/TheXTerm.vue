@@ -16,7 +16,7 @@ FILE: src/components/TheXTerm.vue
     @init-before="onInitBefore" @init-after="onInitAfter"
     @before-execute-command="onBeforeExecuteCommand"
     @exec-cmd="onExecCmd"
-   :show-header="false" :enable-example-hint="false" title="👋🏻" >
+   :show-header="false" :enable-example-hint="false" title="👋🏻">
   </Terminal>
   </div>
 </template>
@@ -32,9 +32,7 @@ import { emitter } from "@/eventBus";
 
 import Terminal, { Command, TerminalApi } from "vue-web-terminal"
 // This style needs to be introduced in versions after 3.1.8 and 2.1.12.
-// There is no need to introduce theme styles in previous versions.
 import 'vue-web-terminal/lib/theme/dark.css'
-// import 'vue-web-terminal/lib/theme/light.css'
 
 
 let idleTimer: number | undefined;
@@ -142,7 +140,10 @@ const onInitBefore = () => {
 
 const onInitAfter = () => {
   console.log('Terminal has been initialized');
-  //
+  // Start idle timer after terminal is initialized
+  setTimeout(() => {
+    resetAndStartIdleTimer();
+  }, 500);
 };
 
 // const onBeforeExecuteCommand = (cmdKey, command: Command, name: String) => {
@@ -165,15 +166,21 @@ window.addEventListener('keypress', () => {
 });
 
 onMounted(() => {
-  resetAndStartIdleTimer(); // Start the timer when the component is mounted
+  // Don't start idle timer here - wait for terminal initialization
 
   emitter.on("webSocket.open", handleMessage);
   emitter.on("webSocket.onMessage", handleMessage);
 
-  const { proxy } = getCurrentInstance() as ComponentInternalInstance;
+  const instance = getCurrentInstance() as ComponentInternalInstance;
   setTimeout(() => {
-      if (proxy == null) return;
-      proxy.$connect();
+      if (instance?.appContext.app.config.globalProperties.$socket) {
+        // Socket already connected
+        return;
+      }
+      // Connect via the global properties
+      if (instance?.appContext.app.config.globalProperties.$connect) {
+        instance.appContext.app.config.globalProperties.$connect();
+      }
     }, 100);});
 
 onUnmounted(() => {
