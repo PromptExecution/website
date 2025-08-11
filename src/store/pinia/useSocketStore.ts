@@ -5,8 +5,7 @@ import { setupStore } from "@/store/pinia/store";
 import { SocketStore } from "@/store/pinia/typeOfSocketStore";
 import { emitter } from "@/eventBus";
 
-export const useSocketStore = defineStore({
-  id: "socket",
+export const useSocketStore = defineStore("socket", {
   state: (): SocketStore => ({
     // 连接状态
     isConnected: false,
@@ -46,7 +45,7 @@ export const useSocketStore = defineStore({
       // Check if there are pending outgoing messages
       if (this.outgoingMessages.length > 0) {
         // Loop through the outgoing messages and send them
-        this.outgoingMessages.forEach((message,index) => {
+        this.outgoingMessages.forEach((_message, index) => {
           // Send the message through the WebSocket
           // TODO: Get app reference properly for WebSocket
           // app.config.globalProperties.$socket.sendObj({

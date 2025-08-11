@@ -18,6 +18,16 @@
 
 <style scoped>
 
+/* Font imports for logo SVGs */
+@import url('https://db.onlinewebfonts.com/c/3bc7046035df293d6486e481022b043e?family=Patron');
+
+@font-face {
+  font-family: 'ExodarOutline';
+  src: url('/fonts/Exodar-Outline.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 .logo-wrapper {
     display: flex;
     justify-content: center;

@@ -19,7 +19,7 @@ app.config.unwrapInjectedRef = true
 */
 
 // Set up Pinia store before mounting
-const piniaSocketStore = useSocketStoreWithOut(app);
+useSocketStoreWithOut(app);
 
 app.use(VueCookieNext);
 
