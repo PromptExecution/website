@@ -9,7 +9,6 @@ import { VueCookieNext } from 'vue-cookie-next';
 import VueNativeSock from "vue-native-websocket-vue3";
 
 import { useSocketStoreWithOut } from "./store/pinia/useSocketStore";
-import { createPinia } from 'pinia'
 
 // 🤓: https://github.com/eladcandroid/v-idle-3
 // import Vidle from 'v-idle-3'
@@ -19,24 +18,21 @@ const app = createApp(App);
 app.config.unwrapInjectedRef = true
 */
 
+// Set up Pinia store before mounting
+const piniaSocketStore = useSocketStoreWithOut(app);
 
-app.use(createPinia());
 app.use(VueCookieNext);
 
 app.use(VueGtag, {
   property: { id: "G-XP9X9LHTDV" },
   isEnabled: false,
 });
+
 app.mount('#app');
 
-
-// apparently use() after mount is 👍🏻
-const piniaSocketStore = useSocketStoreWithOut(app);
 app.use(VueNativeSock,"ws://fung1.lan:8080",{
     // 启用pinia集成 | enable pinia integration
-    // store: myPinia,
-    // store: useSocketStoreWithOut,
-    store: piniaSocketStore,
+    // store: piniaSocketStore(),
     // 数据发送/接收使用使用json
     format: "json",
     // 开启手动调用 connect() 连接服务器
@@ -48,6 +44,5 @@ app.use(VueNativeSock,"ws://fung1.lan:8080",{
     // 重连间隔时间
     reconnectionDelay: 3000
 });
-
 
 export default app;
