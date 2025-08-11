@@ -1,13 +1,56 @@
 <script setup lang="ts">
-// import { ref } from 'vue'
-// defineProps<{ msg: string }>()
-// const count = ref(0)
+import { ref, onMounted, onUnmounted } from 'vue'
+import Logo3D from './Logo3D.vue'
+
+const show3D = ref(false)
+let idleTimer: number | null = null
+
+const startIdleTimer = () => {
+  if (idleTimer) clearTimeout(idleTimer)
+  
+  // Show 3D immediately on mouse activity
+  show3D.value = true
+  
+  // Set timer to hide 3D after 2 seconds of inactivity
+  idleTimer = setTimeout(() => {
+    show3D.value = false
+  }, 2000)
+}
+
+const handleMouseMove = () => {
+  startIdleTimer()
+}
+
+onMounted(() => {
+  document.addEventListener('mousemove', handleMouseMove)
+  // Start with 2D logo (show3D = false by default)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', handleMouseMove)
+  if (idleTimer) clearTimeout(idleTimer)
+})
 </script>
 
 <template>
     <div class="logo-wrapper">
         <div class="logo-container">
-            <img src="/PromptExecution-LogoV2-full-transparent.webp" class="logo-head" alt="Cybernetic Head"/>
+            <!-- 2D Logo -->
+            <img 
+                src="/PromptExecution-LogoV2-full-transparent.png" 
+                class="logo-2d" 
+                :class="{ 'fade-out': show3D }"
+                alt="Cybernetic Head"
+            />
+            
+            <!-- 3D Logo -->
+            <div class="logo-3d-wrapper" :class="{ 'fade-in': show3D }">
+                <Logo3D />
+            </div>
+            
+            <!-- Spacer to maintain layout -->
+            <div class="logo-spacer"></div>
+            
             <div class="text-container">
                 <div class="logo-title">PROMPT EXECUTION</div>
                 <div class="logo-subtitle">COGNITIVE ROBOTIC PROCESS AUTOMATION</div>
@@ -55,9 +98,36 @@
     display: flex;
     align-items: center;
     height: 122px;
+    position: relative;
 }
 
-.logo-head {
+.logo-2d, .logo-3d-wrapper {
+    width: 100px;
+    height: 100px;
+    margin-right: 10px;
+    position: absolute;
+    transition: opacity 0.6s ease-in-out;
+}
+
+.logo-2d {
+    opacity: 1;
+    z-index: 1;
+}
+
+.logo-2d.fade-out {
+    opacity: 0;
+}
+
+.logo-3d-wrapper {
+    opacity: 0;
+    z-index: 2;
+}
+
+.logo-3d-wrapper.fade-in {
+    opacity: 1;
+}
+
+.logo-spacer {
     width: 100px;
     height: 100px;
     margin-right: 10px;
