@@ -57,7 +57,7 @@ const initThreeJS = () => {
 
   // Load GLB model
   const loader = new GLTFLoader()
-  loader.load('/sample.glb', (gltf) => {
+  loader.load('/2ae0aaee-e2de-45f0-aee2-9f7da77f7c18.glb', (gltf) => {
     model = gltf.scene
     model.scale.setScalar(5.5) // Scale set to 5.5
     scene.add(model)
