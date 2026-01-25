@@ -7,6 +7,8 @@ import App from './App.vue'
 import VueGtag from "vue-gtag-next";
 import { VueCookieNext } from 'vue-cookie-next';
 import VueNativeSock from "vue-native-websocket-vue3";
+// @ts-ignore - TypeScript can't resolve the export but it exists at runtime
+import { createTerminal } from 'vue-web-terminal';
 
 import { useSocketStoreWithOut } from "./store/pinia/useSocketStore";
 
@@ -27,6 +29,9 @@ app.use(VueGtag, {
   property: { id: "G-XP9X9LHTDV" },
   isEnabled: false,
 });
+
+// Register vue-web-terminal (required for TerminalApi to work)
+app.use(createTerminal());
 
 app.mount('#app');
 

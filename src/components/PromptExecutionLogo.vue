@@ -61,17 +61,23 @@ onUnmounted(() => {
 
 <style scoped>
 
-/* Font imports for logo text */
-@import url('https://db.onlinewebfonts.com/c/3bc7046035df293d6486e481022b043e?family=Patron');
-
+/* Font imports for logo text - using local licensed fonts */
 @font-face {
   font-family: 'Patron-PersonalUse-Regular';
-  src: url('https://db.onlinewebfonts.com/c/3bc7046035df293d6486e481022b043e?family=Patron') format('truetype');
+  src: url('/fonts/PATRON.woff2') format('woff2'),
+       url('/fonts/PATRON.woff') format('woff'),
+       url('/fonts/PATRON.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
 }
 
 @font-face {
   font-family: 'Patron - Personal Use';
-  src: url('https://db.onlinewebfonts.com/c/3bc7046035df293d6486e481022b043e?family=Patron') format('truetype');
+  src: url('/fonts/PATRON.woff2') format('woff2'),
+       url('/fonts/PATRON.woff') format('woff'),
+       url('/fonts/PATRON.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
 }
 
 @font-face {
