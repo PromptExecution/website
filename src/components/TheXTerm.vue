@@ -16,7 +16,10 @@ FILE: src/components/TheXTerm.vue
     @init-before="onInitBefore" @init-after="onInitAfter"
     @before-execute-command="onBeforeExecuteCommand"
     @exec-cmd="onExecCmd"
-   :show-header="false" :enable-example-hint="false" title="👋🏻">
+    :show-header="false"
+    :enable-example-hint="false"
+    title="👋🏻"
+    theme="dark">
   </Terminal>
   </div>
 </template>
@@ -30,9 +33,10 @@ import { getCurrentInstance, ComponentInternalInstance } from "vue";
 // In any module where you want to emit an event
 import { emitter } from "@/eventBus";
 
-import Terminal, { Command, TerminalApi } from "vue-web-terminal"
-// This style needs to be introduced in versions after 3.1.8 and 2.1.12.
-import 'vue-web-terminal/lib/theme/dark.css'
+import Terminal from "vue-web-terminal"
+import { TerminalApi } from "vue-web-terminal"
+import type { Command } from "vue-web-terminal"
+// Theme is now controlled via component prop (v3.3.1+)
 
 
 let idleTimer: number | undefined;
