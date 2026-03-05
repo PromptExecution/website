@@ -4,7 +4,7 @@
       define new icons in types/vue-icons.d.ts
     -->
       <a target="_blank" href="http://linkedin.com/company/promptexecution/">
-        <uil-linkedin size="16px" class="logo" /> ABN 456 5038 5466
+        <uil-linkedin size="16px" class="logo" /> PROMPT EXECUTION PTY LTD ACN: 692741370
         <!-- <a target="_blank" href="https://abr.business.gov.au/ABN/View?id=45650385466"> -->
       </a>
       &nbsp;&nbsp;
