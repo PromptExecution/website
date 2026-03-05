@@ -31,7 +31,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="win95-window">
+  <div class="window comic-window">
     <div class="title-bar">
       <div class="title-bar-text">LLM DOES NOT COMPUTE - promptexecution.com</div>
       <div class="title-bar-controls">
@@ -75,14 +75,13 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Win95-style custom styling */
-.win95-window {
+.comic-window {
   max-width: 1400px;
-  margin: 20px auto;
-  border: 2px solid #dfdfdf;
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
-  background: #c0c0c0;
-  font-family: 'MS Sans Serif', Arial, sans-serif;
+  margin: 12px auto 24px;
+  min-height: calc(100vh - 110px);
+  display: flex;
+  flex-direction: column;
+  font-family: Tahoma, 'Trebuchet MS', Verdana, Arial, sans-serif;
 }
 
 .title-bar {
@@ -116,37 +115,40 @@ onMounted(() => {
 
 .window-body {
   padding: 8px;
-  background: #c0c0c0;
+  background: #ece9d8;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .tabs {
   display: flex;
   gap: 2px;
   margin-bottom: 2px;
-  border-bottom: 2px solid #808080;
+  border-bottom: 1px solid #7f9db9;
 }
 
 .tab {
   padding: 6px 16px;
-  background: #c0c0c0;
-  border: 2px solid #dfdfdf;
+  background: #ece9d8;
+  border: 1px solid #7f9db9;
   border-bottom: none;
   cursor: pointer;
-  font-family: 'MS Sans Serif', Arial, sans-serif;
+  font-family: Tahoma, 'Trebuchet MS', Verdana, Arial, sans-serif;
   font-size: 12px;
   position: relative;
-  top: 2px;
+  top: 1px;
 }
 
 .tab:hover {
-  background: #e0e0e0;
+  background: #f5f3ea;
 }
 
 .tab.active {
-  background: #c0c0c0;
-  border-top: 2px solid #ffffff;
-  border-left: 2px solid #ffffff;
-  border-right: 2px solid #808080;
+  background: #ffffff;
+  border-top: 1px solid #3d84c6;
+  border-left: 1px solid #3d84c6;
+  border-right: 1px solid #3d84c6;
   font-weight: bold;
   z-index: 1;
 }
@@ -154,8 +156,9 @@ onMounted(() => {
 .tab-content {
   min-height: 500px;
   padding: 16px;
-  background: #c0c0c0;
-  border: 2px inset #dfdfdf;
+  background: #ffffff;
+  border: 1px solid #7f9db9;
+  flex: 1;
 }
 
 .status-bar {
@@ -167,8 +170,8 @@ onMounted(() => {
 
 .status-bar-field {
   padding: 4px 8px;
-  border: 1px inset #dfdfdf;
-  background: #c0c0c0;
+  border: 1px solid #b9b6aa;
+  background: #ece9d8;
   flex: 1;
   margin: 0;
 }
