@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name=promptexecution-comic --env production",
+    "db:init": "wrangler d1 execute llm-comic-db --file=./schema.sql",
+    "db:query": "wrangler d1 execute llm-comic-db --command",
+    "logs": "wrangler pages deployment tail --project-name=promptexecution-comic"
   },
   "dependencies": {
     "@achrinza/node-ipc": "10.1.11",

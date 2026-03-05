@@ -1,0 +1,39 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "promptexecution-comic"
+main = "functions/_worker.js"
+compatibility_date = "2024-12-01"
+
+# Cloudflare Pages configuration
+pages_build_output_dir = "dist"
+
+# Cron trigger for daily comic generation
+[triggers]
+crons = ["0 9 * * *"]  # 9 AM UTC daily
+
+# D1 Database for metadata, votes, subscriptions
+[[d1_databases]]
+binding = "DB"
+database_name = "llm-comic-db"
+database_id = "preview_d1_database_id"  # Replace with actual ID after creation
+
+# R2 Bucket for comic images
+[[r2_buckets]]
+binding = "COMICS_BUCKET"
+bucket_name = "llm-comics"
+
+# KV for caching (optional)
+[[kv_namespaces]]
+binding = "CACHE"
+id = "preview_kv_namespace_id"  # Replace with actual ID
+
+# Secrets for VAPID keys (Web Push)
+# Set with: wrangler secret put VAPID_PUBLIC_KEY
+# Set with: wrangler secret put VAPID_PRIVATE_KEY
+
+# Workers AI binding is configured only for production deployments.
+[env.production.ai]
+binding = "AI"
+
+# Analytics Engine (optional, for vote tracking)
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"
