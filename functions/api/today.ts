@@ -2,10 +2,16 @@
 import { runAgenticComicWorkflow } from '../lib/agentic-comic-workflow.ts';
 import { buildComicImagePath, cacheHeaders, parseStoredJson } from '../lib/comic-response.ts';
 import { ensureLocalBootstrapComic } from '../lib/local-bootstrap-comic.ts';
+import { requireBindings } from '../lib/runtime-config.ts';
 
 export async function onRequestGet(context: any) {
   const { env } = context;
   const today = new Date().toISOString().split('T')[0];
+  const bindingError = requireBindings(env, ['DB', 'COMICS_BUCKET']);
+
+  if (bindingError) {
+    return bindingError;
+  }
 
   try {
     // Try today's comic first.
@@ -16,12 +22,21 @@ export async function onRequestGet(context: any) {
     if (!comic) {
       if (String(env.AUTO_GENERATE_ON_READ || '0') === '1') {
         try {
+          let generated = false;
+
           if (env.AI) {
-            await runAgenticComicWorkflow(env, {
-              day: today,
-              trigger: 'manual'
-            });
-          } else if (String(env.ALLOW_LOCAL_BOOTSTRAP || '0') === '1') {
+            try {
+              await runAgenticComicWorkflow(env, {
+                day: today,
+                trigger: 'manual'
+              });
+              generated = true;
+            } catch (aiErr: any) {
+              console.error('Auto-generate on read via AI failed:', aiErr);
+            }
+          }
+
+          if (!generated && String(env.ALLOW_LOCAL_BOOTSTRAP || '0') === '1') {
             await ensureLocalBootstrapComic(env, today);
           }
         } catch (autoErr: any) {

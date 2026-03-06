@@ -9,15 +9,11 @@ crons = ["0 9 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "llm-comic-db"
-database_id = "preview_d1_database_id"
+database_id = "63d24854-1c1d-4f86-8029-242c298177a9"
 
 [[r2_buckets]]
 binding = "COMICS_BUCKET"
 bucket_name = "llm-comics"
-
-[[kv_namespaces]]
-binding = "CACHE"
-id = "preview_kv_namespace_id"
 
 [env.production.ai]
 binding = "AI"

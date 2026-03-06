@@ -1,11 +1,13 @@
 import { cacheHeaders, isValidDay, isValidVariant } from '../lib/comic-response.ts';
 import { normalizeContentType } from '../lib/encoding.ts';
+import { requireBindings } from '../lib/runtime-config.ts';
 
 export async function onRequestGet(context: any) {
   const { request, env } = context;
   const url = new URL(request.url);
   const day = url.searchParams.get('day');
   const variant = url.searchParams.get('variant');
+  const bindingError = requireBindings(env, ['DB', 'COMICS_BUCKET']);
 
   if (!isValidDay(day)) {
     return Response.json({
@@ -17,6 +19,10 @@ export async function onRequestGet(context: any) {
     return Response.json({
       error: 'Invalid variant. Use a or b.'
     }, { status: 400 });
+  }
+
+  if (bindingError) {
+    return bindingError;
   }
 
   try {

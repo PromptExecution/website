@@ -1,15 +1,21 @@
 // GET /api/day?day=YYYY-MM-DD - Returns a specific day's comic variants + vote counts
 import { buildComicImagePath, cacheHeaders, isValidDay, parseStoredJson } from '../lib/comic-response.ts';
+import { requireBindings } from '../lib/runtime-config.ts';
 
 export async function onRequestGet(context: any) {
   const { request, env } = context;
   const url = new URL(request.url);
   const day = url.searchParams.get('day');
+  const bindingError = requireBindings(env, ['DB', 'COMICS_BUCKET']);
 
   if (!isValidDay(day)) {
     return Response.json({
       error: 'Invalid day. Use YYYY-MM-DD format.'
     }, { status: 400 });
+  }
+
+  if (bindingError) {
+    return bindingError;
   }
 
   try {

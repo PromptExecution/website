@@ -14,12 +14,12 @@
     "generate:vapid": "@pushforge/builder vapid",
     "preview": "vite preview",
     "deploy": "bun run deploy:pages",
-    "deploy:pages": "bun run build && wrangler pages deploy dist --project-name=promptexecution-comic --env production",
+    "deploy:pages": "bun run build && wrangler pages deploy dist --project-name=promptexecutionwebsite --env production",
     "deploy:cron": "wrangler deploy -c wrangler.cron.toml --env production",
     "db:init": "wrangler d1 execute llm-comic-db --file=./schema.sql",
     "db:init:local": "wrangler d1 execute llm-comic-db --local --file=./schema.sql",
     "db:query": "wrangler d1 execute llm-comic-db --command",
-    "logs": "wrangler pages deployment tail --project-name=promptexecution-comic"
+    "logs": "wrangler pages deployment tail --project-name=promptexecutionwebsite"
   },
   "dependencies": {
     "@achrinza/node-ipc": "10.1.11",

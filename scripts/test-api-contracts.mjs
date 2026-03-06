@@ -250,6 +250,19 @@ async function main() {
   const env = makeEnv();
 
   {
+    const response = await todayApi.onRequestGet({
+      env: { ...env, DB: undefined },
+      request: makeRequest('https://example.com/api/today')
+    });
+    assert.equal(response.status, 503);
+    const payload = await readJson(response);
+    assert.deepEqual(payload, {
+      error: 'Service misconfigured',
+      missingBindings: ['DB']
+    });
+  }
+
+  {
     const response = await todayApi.onRequestGet({ env, request: makeRequest('https://example.com/api/today') });
     assert.equal(response.status, 200);
     const payload = await readJson(response);

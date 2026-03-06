@@ -1,13 +1,19 @@
 // Manual comic generation trigger for testing
 // POST /api/test-generate with Authorization header
+import { requireBindings } from '../lib/runtime-config.ts';
 
 export async function onRequestPost(context: any) {
   const { env, request } = context;
+  const bindingError = requireBindings(env, ['DB', 'COMICS_BUCKET']);
 
   if (!env.TEST_SECRET) {
     return Response.json({
       error: 'TEST_SECRET is not configured for this environment'
     }, { status: 503 });
+  }
+
+  if (bindingError) {
+    return bindingError;
   }
 
   // Basic auth to prevent abuse

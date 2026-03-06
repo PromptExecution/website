@@ -1,4 +1,5 @@
 // POST /api/subscribe - Subscribe to push notifications
+import { requireBindings } from '../lib/runtime-config.ts';
 
 interface SubscribeRequest {
   endpoint: string;
@@ -11,11 +12,16 @@ interface SubscribeRequest {
 export async function onRequestPost(context: any) {
   const { request, env } = context;
   const pushEnabled = String(env.ENABLE_PUSH_NOTIFICATIONS || '0') === '1';
+  const bindingError = requireBindings(env, ['DB']);
 
   if (!pushEnabled) {
     return Response.json({
       error: 'Push notifications are disabled for this environment'
     }, { status: 503 });
+  }
+
+  if (bindingError) {
+    return bindingError;
   }
 
   try {
@@ -54,11 +60,16 @@ export async function onRequestPost(context: any) {
 export async function onRequestDelete(context: any) {
   const { request, env } = context;
   const pushEnabled = String(env.ENABLE_PUSH_NOTIFICATIONS || '0') === '1';
+  const bindingError = requireBindings(env, ['DB']);
 
   if (!pushEnabled) {
     return Response.json({
       error: 'Push notifications are disabled for this environment'
     }, { status: 503 });
+  }
+
+  if (bindingError) {
+    return bindingError;
   }
 
   try {

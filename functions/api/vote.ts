@@ -1,5 +1,6 @@
 // POST /api/vote - Record a vote for variant A or B
 import { isValidDay } from '../lib/comic-response.ts';
+import { requireBindings } from '../lib/runtime-config.ts';
 
 interface VoteRequest {
   day: string;
@@ -8,6 +9,11 @@ interface VoteRequest {
 
 export async function onRequestPost(context: any) {
   const { request, env } = context;
+  const bindingError = requireBindings(env, ['DB']);
+
+  if (bindingError) {
+    return bindingError;
+  }
 
   try {
     const body: VoteRequest = await request.json();

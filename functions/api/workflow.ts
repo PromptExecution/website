@@ -1,11 +1,17 @@
 // GET /api/workflow?day=YYYY-MM-DD&include_artifacts=1
 // Returns workflow metadata and, optionally, persisted artifact content.
+import { requireBindings } from '../lib/runtime-config.ts';
 
 export async function onRequestGet(context: any) {
   const { request, env } = context;
   const url = new URL(request.url);
   const day = url.searchParams.get('day');
   const includeArtifacts = url.searchParams.get('include_artifacts') === '1';
+  const bindingError = requireBindings(env, includeArtifacts ? ['DB', 'COMICS_BUCKET'] : ['DB']);
+
+  if (bindingError) {
+    return bindingError;
+  }
 
   try {
     const run = day
