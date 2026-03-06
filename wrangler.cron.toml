@@ -18,6 +18,15 @@ bucket_name = "llm-comics"
 [env.production.ai]
 binding = "AI"
 
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "llm-comic-db"
+database_id = "63d24854-1c1d-4f86-8029-242c298177a9"
+
+[[env.production.r2_buckets]]
+binding = "COMICS_BUCKET"
+bucket_name = "llm-comics"
+
 [env.production.vars]
 IMAGE_MODEL_A = "@cf/bytedance/stable-diffusion-xl-lightning"
 IMAGE_MODEL_B = "@cf/black-forest-labs/flux-1-schnell"
