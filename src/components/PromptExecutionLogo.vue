@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import Logo3D from './Logo3D.vue'
+import { defineAsyncComponent, ref, onMounted, onUnmounted } from 'vue'
+
+const Logo3D = defineAsyncComponent(() => import('./Logo3D.vue'))
 
 const show3D = ref(false)
-let idleTimer: number | null = null
+let idleTimer: ReturnType<typeof setTimeout> | null = null
 
 const startIdleTimer = () => {
   if (idleTimer) clearTimeout(idleTimer)

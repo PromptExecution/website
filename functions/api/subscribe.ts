@@ -10,6 +10,13 @@ interface SubscribeRequest {
 
 export async function onRequestPost(context: any) {
   const { request, env } = context;
+  const pushEnabled = String(env.ENABLE_PUSH_NOTIFICATIONS || '0') === '1';
+
+  if (!pushEnabled) {
+    return Response.json({
+      error: 'Push notifications are disabled for this environment'
+    }, { status: 503 });
+  }
 
   try {
     const body: SubscribeRequest = await request.json();
@@ -46,6 +53,13 @@ export async function onRequestPost(context: any) {
 // DELETE /api/subscribe - Unsubscribe
 export async function onRequestDelete(context: any) {
   const { request, env } = context;
+  const pushEnabled = String(env.ENABLE_PUSH_NOTIFICATIONS || '0') === '1';
+
+  if (!pushEnabled) {
+    return Response.json({
+      error: 'Push notifications are disabled for this environment'
+    }, { status: 503 });
+  }
 
   try {
     const body = await request.json();

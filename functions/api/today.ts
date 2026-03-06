@@ -1,5 +1,7 @@
 // GET /api/today - Returns today's comic variants + vote counts
-import { arrayBufferToBase64, normalizeContentType } from '../lib/encoding';
+import { runAgenticComicWorkflow } from '../lib/agentic-comic-workflow.ts';
+import { buildComicImagePath, cacheHeaders, parseStoredJson } from '../lib/comic-response.ts';
+import { ensureLocalBootstrapComic } from '../lib/local-bootstrap-comic.ts';
 
 export async function onRequestGet(context: any) {
   const { env } = context;
@@ -10,6 +12,27 @@ export async function onRequestGet(context: any) {
     let comic = await env.DB.prepare(
       'SELECT * FROM comics WHERE day = ?'
     ).bind(today).first();
+
+    if (!comic) {
+      if (String(env.AUTO_GENERATE_ON_READ || '0') === '1') {
+        try {
+          if (env.AI) {
+            await runAgenticComicWorkflow(env, {
+              day: today,
+              trigger: 'manual'
+            });
+          } else if (String(env.ALLOW_LOCAL_BOOTSTRAP || '0') === '1') {
+            await ensureLocalBootstrapComic(env, today);
+          }
+        } catch (autoErr: any) {
+          console.error('Auto-generate on read failed:', autoErr);
+        }
+      }
+
+      comic = await env.DB.prepare(
+        'SELECT * FROM comics WHERE day = ?'
+      ).bind(today).first();
+    }
 
     if (!comic) {
       // Fall back to most recent comic for homepage Comic tab.
@@ -35,38 +58,41 @@ export async function onRequestGet(context: any) {
     const votesA = votes.results.find((v: any) => v.variant === 'a')?.count || 0;
     const votesB = votes.results.find((v: any) => v.variant === 'b')?.count || 0;
 
-    const urlA = await env.COMICS_BUCKET.get(comic.r2_key_a);
-    const urlB = await env.COMICS_BUCKET.get(comic.r2_key_b);
+    const [imageAExists, imageBExists] = await Promise.all([
+      env.COMICS_BUCKET.head(comic.r2_key_a),
+      env.COMICS_BUCKET.head(comic.r2_key_b)
+    ]);
 
-    if (!urlA || !urlB) {
+    if (!imageAExists || !imageBExists) {
       return Response.json({
         error: 'Comic images not found',
         day: comicDay
       }, { status: 500 });
     }
 
-    const imageA = await urlA.arrayBuffer();
-    const imageB = await urlB.arrayBuffer();
-    const typeA = urlA.httpMetadata?.contentType || normalizeContentType(comic.r2_key_a);
-    const typeB = urlB.httpMetadata?.contentType || normalizeContentType(comic.r2_key_b);
+    const headers = cacheHeaders('public, max-age=60, s-maxage=300');
+    headers.set('Content-Type', 'application/json; charset=utf-8');
 
-    return Response.json({
+    return new Response(JSON.stringify({
       day: comicDay,
       title: comic.prompt,
       variants: {
         a: {
           model: comic.model_a,
-          imageUrl: `data:${typeA};base64,${arrayBufferToBase64(imageA)}`,
+          imageUrl: buildComicImagePath(comicDay, 'a'),
           votes: votesA,
-          script: comic.script_a
+          script: parseStoredJson(comic.script_a)
         },
         b: {
           model: comic.model_b,
-          imageUrl: `data:${typeB};base64,${arrayBufferToBase64(imageB)}`,
+          imageUrl: buildComicImagePath(comicDay, 'b'),
           votes: votesB,
-          script: comic.script_b
+          script: parseStoredJson(comic.script_b)
         }
       }
+    }), {
+      status: 200,
+      headers
     });
 
   } catch (err: any) {

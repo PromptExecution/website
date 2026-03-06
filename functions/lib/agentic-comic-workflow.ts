@@ -1,5 +1,5 @@
-import { CAST, pickCharacters, type CastCharacter } from './cast';
-import { base64ToArrayBuffer } from './encoding';
+import { CAST, getCharacterById, pickCharactersExcluding, type CastCharacter } from './cast.ts';
+import { base64ToArrayBuffer } from './encoding.ts';
 
 const DEFAULT_IMAGE_MODEL_A = '@cf/bytedance/stable-diffusion-xl-lightning';
 const DEFAULT_IMAGE_MODEL_B = '@cf/black-forest-labs/flux-1-schnell';
@@ -217,10 +217,16 @@ async function buildComicPlan(
   const now = Date.now();
   const runId = `${options.day}-${now}-${Math.floor(Math.random() * 1_000_000)}`;
   const random = createSeededRng(hashToUInt32(`${options.day}:${runId}`));
-  const panelCount = randomInt(random, 1, 4);
-  const maxCharacters = Math.min(4, CAST.length);
-  const characterCount = randomInt(random, 1, maxCharacters);
-  const chosenCast = pickCharacters(random, characterCount);
+  const panelCount = randomInt(random, 3, 4);
+  const coreCast = ['user', 'robot']
+    .map((id) => getCharacterById(id))
+    .filter(Boolean) as CastCharacter[];
+  const optionalCount = randomInt(random, 0, Math.min(2, CAST.length - coreCast.length));
+  const chosenCast = [
+    ...coreCast,
+    ...pickCharactersExcluding(random, optionalCount, coreCast.map((character) => character.id))
+  ];
+  const characterCount = chosenCast.length;
 
   workflowLog.push(makeStep('sample-structure', 'ok', `Selected ${panelCount} panel(s), ${characterCount} character(s).`));
 
@@ -402,15 +408,24 @@ function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[];
 
   return [
     'Create a graphic webcomic image, not plain text output.',
-    'Style: xkcd-inspired minimal black-and-white line art, hand-drawn stick figures, technical humor.',
+    'Series title: LLM DOES NOT COMPUTE.',
+    'Style: xkcd-inspired minimal black-and-white line art, hand-drawn stick figures, technical humor, precise panel readability.',
     `Layout: exactly ${input.panelCount} panels in one horizontal strip with visible panel borders.`,
     'Each panel should contain concise speech or thought bubbles as part of the drawing.',
     `Topic: ${input.topic}`,
+    'Recurring cast bible:',
+    '- The User is a plain round-head stick figure who asks vague, underspecified questions.',
+    '- The LLM Robot is a square-head stick figure with an antenna. Its internal monologue appears in a cloud thought bubble using a technical monospace style.',
+    '- Simon is a BOFH sysadmin with a fedora and grey goatee. He is dry, cynical, and usually lands the correction or punchline.',
+    '- The Boss wears a tie and talks like an AI hype manager.',
+    '- Ferris is a silent crab cameo or panic signal in the background.',
     'Characters to include:',
     castLines,
     'Scene requirements:',
+    '- The strip must include both the User and the LLM Robot.',
     '- Keep the robot internal monologue in a cloud-like thought bubble with monospace look.',
     '- Keep Simon deadpan if Simon is present.',
+    '- Use dry systems-thinking humor about failure modes, architecture, operations, or specification gaps.',
     '- Keep backgrounds minimal and technical (whiteboard, terminal, server rack hints).',
     '- No full-color illustration; monochrome or near-monochrome only.',
     '- No captions outside panels.',

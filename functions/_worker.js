@@ -1,14 +1,15 @@
 // Main Worker entry point with cron trigger for daily comic generation
 
-import { runAgenticComicWorkflow } from './lib/agentic-comic-workflow';
-import { onRequestGet as getToday } from './api/today';
-import { onRequestGet as getArchive } from './api/archive';
-import { onRequestGet as getDay } from './api/day';
-import { onRequestGet as getWorkflow } from './api/workflow';
-import { onRequestGet as getPushKey } from './api/push-key';
-import { onRequestPost as postVote } from './api/vote';
-import { onRequestPost as postSubscribe, onRequestDelete as deleteSubscribe } from './api/subscribe';
-import { onRequestGet as getTestGenerate, onRequestPost as postTestGenerate } from './api/test-generate';
+import { runAgenticComicWorkflow } from './lib/agentic-comic-workflow.ts';
+import { onRequestGet as getToday } from './api/today.ts';
+import { onRequestGet as getArchive } from './api/archive.ts';
+import { onRequestGet as getDay } from './api/day.ts';
+import { onRequestGet as getImage } from './api/image.ts';
+import { onRequestGet as getWorkflow } from './api/workflow.ts';
+import { onRequestGet as getPushKey } from './api/push-key.ts';
+import { onRequestPost as postVote } from './api/vote.ts';
+import { onRequestPost as postSubscribe, onRequestDelete as deleteSubscribe } from './api/subscribe.ts';
+import { onRequestGet as getTestGenerate, onRequestPost as postTestGenerate } from './api/test-generate.ts';
 
 export default {
   fetch: handleFetch,
@@ -36,6 +37,7 @@ async function handleFetch(request, env, ctx) {
   const handlers = {
     'GET /api/today': getToday,
     'GET /api/day': getDay,
+    'GET /api/image': getImage,
     'GET /api/archive': getArchive,
     'GET /api/workflow': getWorkflow,
     'GET /api/push-key': getPushKey,
@@ -123,6 +125,11 @@ function withCorsHeaders(response) {
 
 async function sendPushNotifications(env, day) {
   try {
+    if (String(env.ENABLE_PUSH_NOTIFICATIONS || '0') !== '1') {
+      console.log('Push delivery is disabled, skipping push notifications');
+      return;
+    }
+
     if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) {
       console.log('Push keys are not configured, skipping push delivery');
       return;

@@ -1,12 +1,12 @@
 // GET /api/day?day=YYYY-MM-DD - Returns a specific day's comic variants + vote counts
-import { arrayBufferToBase64, normalizeContentType } from '../lib/encoding';
+import { buildComicImagePath, cacheHeaders, isValidDay, parseStoredJson } from '../lib/comic-response.ts';
 
 export async function onRequestGet(context: any) {
   const { request, env } = context;
   const url = new URL(request.url);
   const day = url.searchParams.get('day');
 
-  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+  if (!isValidDay(day)) {
     return Response.json({
       error: 'Invalid day. Use YYYY-MM-DD format.'
     }, { status: 400 });
@@ -31,38 +31,41 @@ export async function onRequestGet(context: any) {
     const votesA = votes.results.find((v: any) => v.variant === 'a')?.count || 0;
     const votesB = votes.results.find((v: any) => v.variant === 'b')?.count || 0;
 
-    const fileA = await env.COMICS_BUCKET.get(comic.r2_key_a);
-    const fileB = await env.COMICS_BUCKET.get(comic.r2_key_b);
+    const [imageAExists, imageBExists] = await Promise.all([
+      env.COMICS_BUCKET.head(comic.r2_key_a),
+      env.COMICS_BUCKET.head(comic.r2_key_b)
+    ]);
 
-    if (!fileA || !fileB) {
+    if (!imageAExists || !imageBExists) {
       return Response.json({
         error: 'Comic images not found',
         day
       }, { status: 500 });
     }
 
-    const imageA = await fileA.arrayBuffer();
-    const imageB = await fileB.arrayBuffer();
-    const typeA = fileA.httpMetadata?.contentType || normalizeContentType(comic.r2_key_a);
-    const typeB = fileB.httpMetadata?.contentType || normalizeContentType(comic.r2_key_b);
+    const headers = cacheHeaders('public, max-age=300, s-maxage=3600');
+    headers.set('Content-Type', 'application/json; charset=utf-8');
 
-    return Response.json({
+    return new Response(JSON.stringify({
       day,
       title: comic.prompt,
       variants: {
         a: {
           model: comic.model_a,
-          imageUrl: `data:${typeA};base64,${arrayBufferToBase64(imageA)}`,
+          imageUrl: buildComicImagePath(day, 'a'),
           votes: votesA,
-          script: comic.script_a
+          script: parseStoredJson(comic.script_a)
         },
         b: {
           model: comic.model_b,
-          imageUrl: `data:${typeB};base64,${arrayBufferToBase64(imageB)}`,
+          imageUrl: buildComicImagePath(day, 'b'),
           votes: votesB,
-          script: comic.script_b
+          script: parseStoredJson(comic.script_b)
         }
       }
+    }), {
+      status: 200,
+      headers
     });
   } catch (err: any) {
     console.error('Error fetching day comic:', err);

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import ComicViewer from './ComicViewer.vue';
-import ComicArchive from './ComicArchive.vue';
-import PushSubscribe from './PushSubscribe.vue';
-import TheXTerm from './TheXTerm.vue';
+import { defineAsyncComponent, ref, onMounted } from 'vue';
+
+const ComicViewer = defineAsyncComponent(() => import('./ComicViewer.vue'));
+const ComicArchive = defineAsyncComponent(() => import('./ComicArchive.vue'));
+const PushSubscribe = defineAsyncComponent(() => import('./PushSubscribe.vue'));
+const TheXTerm = defineAsyncComponent(() => import('./TheXTerm.vue'));
 
 const activeTab = ref('comic');
 const selectedDay = ref<string | undefined>(undefined);

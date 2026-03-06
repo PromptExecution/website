@@ -13,7 +13,13 @@ just dev
 This runs:
 1. `npm run build`
 2. `npm run db:init:local`
-3. `wrangler pages dev dist --ip 127.0.0.1 --port 8788 -b TEST_SECRET=local-secret`
+3. `wrangler pages dev dist --ip 127.0.0.1 --port 8788 -b TEST_SECRET=local-secret -b AUTO_GENERATE_ON_READ=1 -b ALLOW_LOCAL_BOOTSTRAP=1`
+
+For local real Workers AI image generation, use:
+
+```bash
+just dev-ai
+```
 
 ### Local frontend-only UI
 
@@ -27,6 +33,12 @@ Keep `just dev` running, then:
 
 ```bash
 just test-workflow-dry
+```
+
+For a real generation run:
+
+```bash
+just test-workflow
 ```
 
 ## Required Config
@@ -46,6 +58,8 @@ See `.env.example` for full list.
 
 Core values:
 - `TEST_SECRET` for `/api/test-generate`
+- `AUTO_GENERATE_ON_READ` (`1` to auto-create today's comic when `/api/today` is empty)
+- `ALLOW_LOCAL_BOOTSTRAP` (`1` to create local SVG fallback comic if `env.AI` is unavailable)
 - `IMAGE_MODEL_A` (default `@cf/bytedance/stable-diffusion-xl-lightning`)
 - `IMAGE_MODEL_B` (default `@cf/black-forest-labs/flux-1-schnell`)
 - `TOPIC_MODEL` (default `@cf/meta/llama-3.1-8b-instruct`)
@@ -109,7 +123,22 @@ For local real-generation testing:
 2. run:
 
 ```bash
-npx wrangler pages dev dist --ip 127.0.0.1 --port 8788 --ai AI -b TEST_SECRET=local-secret
+just dev-ai
 ```
 
 If no AI binding is present, `dry_run=1` still works for prompt workflow testing.
+
+## Architect Skill Package
+
+A hardened skill spec for delegated analysis/orchestration now lives at:
+
+- `skills/principal-cognitive-systems-architect/SKILL.md`
+- `skills/principal-cognitive-systems-architect/references/*`
+- `skills/principal-cognitive-systems-architect/scripts/*`
+
+Useful commands:
+
+```bash
+just architect-init "stabilize comic publish and voting flow"
+just architect-summary .agent-runs/run-YYYYMMDDTHHMMSSZ
+```

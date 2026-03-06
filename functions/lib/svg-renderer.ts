@@ -1,7 +1,7 @@
 // SVG renderer for LLM DOES NOT COMPUTE
 // Generates xkcd-style stick figure comics from scripts
 
-import { ComicScript } from './comic-generator';
+import type { ComicScript } from './comic-generator.ts';
 
 const PANEL_WIDTH = 300;
 const PANEL_HEIGHT = 250;
@@ -14,12 +14,8 @@ export function renderComicToSVG(script: ComicScript): string {
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}">
   <defs>
     <style>
-      @font-face {
-        font-family: 'xkcd';
-        src: url('https://github.com/ipython/xkcd-font/raw/master/xkcd/build/xkcd.woff') format('woff');
-      }
       .comic-text {
-        font-family: 'xkcd', 'Comic Sans MS', cursive;
+        font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
         font-size: 14px;
         fill: black;
       }
@@ -128,17 +124,16 @@ function drawRobotFigure(x: number, y: number): string {
 
 function drawSimonFigure(x: number, y: number): string {
   return `
-  <!-- Simon (BOFH) - sunglasses + coffee -->
+  <!-- Simon (BOFH) - fedora + grey goatee -->
+  <line x1="${x - 24}" y1="${y - 18}" x2="${x + 24}" y2="${y - 18}" stroke="black" stroke-width="2"/>
+  <path d="M ${x - 16} ${y - 18} L ${x - 8} ${y - 30} L ${x + 8} ${y - 30} L ${x + 16} ${y - 18}" fill="white" stroke="black" stroke-width="2"/>
   <circle cx="${x}" cy="${y}" r="15" stroke="black" stroke-width="2" fill="white"/>
-  <rect x="${x - 10}" y="${y - 3}" width="20" height="6" fill="black"/>
+  <path d="M ${x - 6} ${y + 10} Q ${x} ${y + 18} ${x + 6} ${y + 10}" fill="none" stroke="#666" stroke-width="2"/>
   <line x1="${x}" y1="${y + 15}" x2="${x}" y2="${y + 50}" stroke="black" stroke-width="2"/>
   <line x1="${x}" y1="${y + 30}" x2="${x - 20}" y2="${y + 50}" stroke="black" stroke-width="2"/>
   <line x1="${x}" y1="${y + 30}" x2="${x + 20}" y2="${y + 50}" stroke="black" stroke-width="2"/>
   <line x1="${x}" y1="${y + 50}" x2="${x - 15}" y2="${y + 80}" stroke="black" stroke-width="2"/>
   <line x1="${x}" y1="${y + 50}" x2="${x + 15}" y2="${y + 80}" stroke="black" stroke-width="2"/>
-  <!-- Coffee mug -->
-  <rect x="${x + 25}" y="${y + 25}" width="10" height="12" stroke="black" stroke-width="1.5" fill="#8B4513"/>
-  <path d="M ${x + 35} ${y + 28} Q ${x + 40} ${y + 30} ${x + 35} ${y + 32}" stroke="black" stroke-width="1.5" fill="none"/>
 `;
 }
 

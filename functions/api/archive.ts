@@ -1,11 +1,14 @@
 // GET /api/archive?page=1&limit=20 - Returns paginated archive of comics
+import { cacheHeaders } from '../lib/comic-response.ts';
 
 export async function onRequestGet(context: any) {
   const { request, env } = context;
   const url = new URL(request.url);
 
-  const page = parseInt(url.searchParams.get('page') || '1');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
+  const rawPage = Number.parseInt(url.searchParams.get('page') || '1', 10);
+  const rawLimit = Number.parseInt(url.searchParams.get('limit') || '20', 10);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 20;
   const offset = (page - 1) * limit;
 
   try {
@@ -52,12 +55,18 @@ export async function onRequestGet(context: any) {
       };
     });
 
-    return Response.json({
+    const headers = cacheHeaders('public, max-age=300, s-maxage=1800');
+    headers.set('Content-Type', 'application/json; charset=utf-8');
+
+    return new Response(JSON.stringify({
       page,
       limit,
       total,
       totalPages: Math.ceil(total / limit),
       items
+    }), {
+      status: 200,
+      headers
     });
 
   } catch (err: any) {

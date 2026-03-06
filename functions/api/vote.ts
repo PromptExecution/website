@@ -1,4 +1,5 @@
 // POST /api/vote - Record a vote for variant A or B
+import { isValidDay } from '../lib/comic-response.ts';
 
 interface VoteRequest {
   day: string;
@@ -11,10 +12,21 @@ export async function onRequestPost(context: any) {
   try {
     const body: VoteRequest = await request.json();
 
-    if (!body.day || !body.variant || !['a', 'b'].includes(body.variant)) {
+    if (!isValidDay(body.day) || !body.variant || !['a', 'b'].includes(body.variant)) {
       return Response.json({
         error: 'Invalid request. Provide day and variant (a or b)'
       }, { status: 400 });
+    }
+
+    const comic = await env.DB.prepare(
+      'SELECT day FROM comics WHERE day = ?'
+    ).bind(body.day).first();
+
+    if (!comic) {
+      return Response.json({
+        error: 'Cannot vote for a comic that does not exist',
+        day: body.day
+      }, { status: 404 });
     }
 
     // Generate voter hash from IP + User-Agent (simple deduplication)
@@ -22,9 +34,12 @@ export async function onRequestPost(context: any) {
     const ua = request.headers.get('User-Agent') || '';
     const voterHash = await hashString(`${ip}:${ua}:${body.day}`);
 
-    // Try to insert vote (will fail if duplicate due to UNIQUE constraint)
-    const result = await env.DB.prepare(
-      'INSERT OR REPLACE INTO votes (day, variant, voter_hash, created_at) VALUES (?, ?, ?, ?)'
+    await env.DB.prepare(
+      `INSERT INTO votes (day, variant, voter_hash, created_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(day, voter_hash) DO UPDATE SET
+         variant = excluded.variant,
+         created_at = excluded.created_at`
     ).bind(
       body.day,
       body.variant,

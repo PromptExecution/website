@@ -22,7 +22,7 @@ export async function onRequestPost(context: any) {
   }
 
   try {
-    const { runAgenticComicWorkflow, previewAgenticPromptPlan } = await import('../lib/agentic-comic-workflow');
+    const { runAgenticComicWorkflow, previewAgenticPromptPlan } = await import('../lib/agentic-comic-workflow.ts');
     const reqUrl = new URL(request.url);
     const body = (await tryParseJson(request)) || {};
 

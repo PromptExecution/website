@@ -7,6 +7,9 @@
     "dev": "vite",
     "dev:pages": "npx wrangler pages dev dist --ip 127.0.0.1 --port 8788",
     "build": "vue-tsc && vite build",
+    "test:contracts": "node --experimental-strip-types scripts/test-api-contracts.mjs",
+    "smoke:local": "./scripts/smoke-local.sh",
+    "ci:local": "npm run build && npm run test:contracts && npm run smoke:local",
     "preview": "vite preview",
     "deploy": "npm run build && npx wrangler pages deploy dist --project-name=promptexecution-comic --env production",
     "db:init": "npx wrangler d1 execute llm-comic-db --file=./schema.sql",
@@ -16,7 +19,6 @@
   },
   "dependencies": {
     "@achrinza/node-ipc": "10.1.11",
-    "@iconscout/vue-unicons": "github:elasticdotventures/vue-unicons",
     "@types/three": "^0.179.0",
     "mitt": "^3.0.1",
     "path": "^0.12.7",
@@ -24,7 +26,6 @@
     "three": "^0.179.1",
     "v-idle-3": "^0.3.14",
     "vue": "3.5.18",
-    "vue-cookie-law": "github:elasticdotventures/vue-cookie-law",
     "vue-cookie-next": "^1.3.0",
     "vue-gtag-next": "^1.14.0",
     "vue-native-websocket-vue3": "3.1.8",
@@ -34,6 +35,8 @@
     "@vitejs/plugin-vue": "6.0.1",
     "typescript": "5.9.2",
     "vite": "7.1.1",
-    "vue-tsc": "3.0.5"
-  }
+    "vue-tsc": "3.0.5",
+    "wrangler": "^4.0.0"
+  },
+  "packageManager": "npm@10.9.2"
 }

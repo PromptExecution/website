@@ -30,7 +30,7 @@ id = "preview_kv_namespace_id"  # Replace with actual ID
 # Set with: wrangler secret put VAPID_PUBLIC_KEY
 # Set with: wrangler secret put VAPID_PRIVATE_KEY
 
-# Workers AI binding is configured only for production deployments.
+# Override or pin model defaults for production deployments.
 [env.production.ai]
 binding = "AI"
 
