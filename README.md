@@ -11,8 +11,8 @@ just dev
 ```
 
 This runs:
-1. `npm run build`
-2. `npm run db:init:local`
+1. `bun run build`
+2. `bun run db:init:local`
 3. `wrangler pages dev dist --ip 127.0.0.1 --port 8788 -b TEST_SECRET=local-secret -b AUTO_GENERATE_ON_READ=1 -b ALLOW_LOCAL_BOOTSTRAP=1`
 
 For local real Workers AI image generation, use:
@@ -123,8 +123,8 @@ just test-cron
 If AI binding is not configured locally, cron trigger will run and fail with an explicit Workers AI binding error (expected).
 
 For production deployment:
-1. Deploy Pages with `npm run deploy:pages`
-2. Deploy the scheduled Worker with `npm run deploy:cron`
+1. Deploy Pages with `bun run deploy:pages`
+2. Deploy the scheduled Worker with `bun run deploy:cron`
 
 ## Workers AI notes
 

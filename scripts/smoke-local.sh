@@ -23,7 +23,7 @@ trap cleanup EXIT
 
 echo "[smoke] building frontend"
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
-  npm run build >/dev/null
+  bun run build >/dev/null
 else
   echo "[smoke] skipping build because SKIP_BUILD=1"
 fi
@@ -32,7 +32,7 @@ echo "[smoke] resetting local wrangler state"
 rm -rf .wrangler/state/v3
 
 echo "[smoke] initializing local D1 schema"
-npm run db:init:local >/dev/null
+bun run db:init:local >/dev/null
 
 echo "[smoke] starting wrangler pages dev on ${BASE_URL}"
 npx wrangler pages dev dist \

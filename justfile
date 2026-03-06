@@ -4,29 +4,29 @@ default:
   @just --list
 
 dev:
-  @npm run build
-  @npm run db:init:local
-  @npx wrangler pages dev dist --ip 127.0.0.1 --port 8788 \
+  @bun run build
+  @bun run db:init:local
+  @bunx wrangler pages dev dist --ip 127.0.0.1 --port 8788 \
     -b TEST_SECRET=local-secret \
     -b AUTO_GENERATE_ON_READ=1 \
     -b ALLOW_LOCAL_BOOTSTRAP=1
 
 dev-ai:
-  @npm run build
-  @npm run db:init:local
-  @npx wrangler pages dev dist --ip 127.0.0.1 --port 8788 --ai AI \
+  @bun run build
+  @bun run db:init:local
+  @bunx wrangler pages dev dist --ip 127.0.0.1 --port 8788 --ai AI \
     -b TEST_SECRET=local-secret \
     -b AUTO_GENERATE_ON_READ=1
 
 dev-cron:
-  @npm run db:init:local
-  @npm run dev:cron
+  @bun run db:init:local
+  @bun run dev:cron
 
 dev-ui:
-  @npm run dev
+  @bun run dev
 
 build:
-  @npm run build
+  @bun run build
 
 test-workflow-dry:
   @curl -X POST \
