@@ -24,6 +24,8 @@ const comic = ref<ComicData | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
 const voted = ref<string | null>(null);
+const usingFallback = ref(false);
+const fallbackReason = ref('');
 const props = defineProps<{
   day?: string;
 }>();
@@ -38,33 +40,30 @@ onMounted(async () => {
 async function fetchToday() {
   try {
     loading.value = true;
+    usingFallback.value = false;
+    fallbackReason.value = '';
     const endpoint = props.day
       ? `/api/day?day=${encodeURIComponent(props.day)}`
       : '/api/today';
     const response = await fetch(endpoint);
 
     if (!response.ok) {
-      if (isLocalDev()) {
-        comic.value = buildLocalMockComic(props.day);
-        error.value = null;
-        return;
-      }
-      if (response.status === 404) {
-        error.value = 'No comic available yet today. Check back later!';
-      } else {
-        throw new Error('Failed to load comic');
-      }
+      comic.value = buildLocalMockComic(props.day);
+      usingFallback.value = true;
+      fallbackReason.value = response.status === 404
+        ? 'No published comic found yet. Showing fallback demo comic.'
+        : `Comic backend returned ${response.status}. Showing fallback demo comic.`;
+      error.value = null;
       return;
     }
 
     comic.value = await response.json();
+    error.value = null;
   } catch (err: any) {
-    if (isLocalDev()) {
-      comic.value = buildLocalMockComic(props.day);
-      error.value = null;
-      return;
-    }
-    error.value = err.message || 'Failed to load comic';
+    comic.value = buildLocalMockComic(props.day);
+    usingFallback.value = true;
+    fallbackReason.value = 'Comic backend unavailable. Showing fallback demo comic.';
+    error.value = null;
   } finally {
     loading.value = false;
   }
@@ -94,7 +93,7 @@ async function vote(variant: 'a' | 'b') {
       comic.value.variants.b.votes = result.votes.b;
     }
   } catch (err: any) {
-    if (isLocalDev() && comic.value) {
+    if (usingFallback.value && comic.value) {
       voted.value = variant;
       comic.value.variants[variant].votes += 1;
       return;
@@ -102,10 +101,6 @@ async function vote(variant: 'a' | 'b') {
     console.error('Vote error:', err);
     alert('Failed to record vote. Please try again.');
   }
-}
-
-function isLocalDev() {
-  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 }
 
 function totalVotes() {
@@ -185,6 +180,7 @@ function escapeXml(text: string) {
     <div v-else-if="comic" class="comic-display">
       <h2 class="comic-title">{{ comic.title }}</h2>
       <p class="comic-date">{{ comic.day }}</p>
+      <p v-if="usingFallback" class="fallback-note">⚠️ {{ fallbackReason }}</p>
 
       <div class="variants">
         <!-- Variant A -->
@@ -283,6 +279,12 @@ function escapeXml(text: string) {
 .score-line {
   margin-top: 8px;
   font-size: 13px;
+}
+
+.fallback-note {
+  margin: 0 0 12px 0;
+  color: #9b5f00;
+  font-size: 12px;
 }
 
 .variants {
