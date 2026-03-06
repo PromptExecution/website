@@ -47,3 +47,25 @@ CREATE TABLE IF NOT EXISTS vote_counts (
     votes_b INTEGER DEFAULT 0,
     updated_at INTEGER NOT NULL
 );
+
+-- Workflow run metadata + retained artifact pointers
+CREATE TABLE IF NOT EXISTS workflow_runs (
+    run_id TEXT PRIMARY KEY,
+    day TEXT NOT NULL,
+    trigger TEXT NOT NULL,              -- cron | manual
+    panel_count INTEGER NOT NULL,
+    character_count INTEGER NOT NULL,
+    cast_json TEXT NOT NULL,
+    topics_json TEXT NOT NULL,
+    selected_topic TEXT NOT NULL,
+    prompt_a TEXT NOT NULL,
+    prompt_b TEXT NOT NULL,
+    model_a TEXT NOT NULL,
+    model_b TEXT NOT NULL,
+    image_key_a TEXT NOT NULL,
+    image_key_b TEXT NOT NULL,
+    artifact_log_key TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_day ON workflow_runs(day, created_at DESC);

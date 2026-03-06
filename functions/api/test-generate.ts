@@ -22,97 +22,76 @@ export async function onRequestPost(context: any) {
   }
 
   try {
-    // Import generation logic
-    const { generateComicScript } = await import('../lib/comic-generator');
-    const { renderComicToSVG } = await import('../lib/svg-renderer');
+    const { runAgenticComicWorkflow, previewAgenticPromptPlan } = await import('../lib/agentic-comic-workflow');
+    const reqUrl = new URL(request.url);
+    const body = (await tryParseJson(request)) || {};
 
-    const today = new Date().toISOString().split('T')[0];
-    const keyA = `comics/${today}/a.svg`;
-    const keyB = `comics/${today}/b.svg`;
+    const day = String(body.day || reqUrl.searchParams.get('day') || new Date().toISOString().split('T')[0]);
+    const force = String(body.force || reqUrl.searchParams.get('force') || '0') === '1';
+    const dryRun = String(body.dry_run || reqUrl.searchParams.get('dry_run') || '0') === '1';
+    const forceTopic = String(body.topic || reqUrl.searchParams.get('topic') || '').trim() || undefined;
+    const keyA = `comics/${day}/a.png`;
+    const keyB = `comics/${day}/b.png`;
+    const legacyKeyA = `comics/${day}/a.svg`;
+    const legacyKeyB = `comics/${day}/b.svg`;
 
-    // Check if today's comic objects already exist
-    const [existingA, existingB] = await Promise.all([
+    // Check if today's comic objects already exist (unless force=1)
+    const [existingA, existingB, existingLegacyA, existingLegacyB] = await Promise.all([
       env.COMICS_BUCKET.head(keyA),
       env.COMICS_BUCKET.head(keyB),
+      env.COMICS_BUCKET.head(legacyKeyA),
+      env.COMICS_BUCKET.head(legacyKeyB),
     ]);
-    if (existingA || existingB) {
+    if (!force && (existingA || existingB || existingLegacyA || existingLegacyB)) {
       return Response.json({
         error: 'Comic object already exists for today',
-        day: today,
-        hint: 'Delete existing R2 object(s) for this day or change the date'
+        day,
+        hint: 'Use force=1 to overwrite metadata with a new run for the same day'
       }, { status: 409 });
     }
 
-    // Models to test
-    const MODEL_A = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-    const MODEL_B = '@cf/mistral/mistral-7b-instruct-v0.2-lora';
+    if (dryRun) {
+      const plan = await previewAgenticPromptPlan(env, {
+        day,
+        force_topic: forceTopic,
+        trigger: 'manual'
+      });
+      return Response.json({
+        success: true,
+        dry_run: true,
+        day,
+        message: 'Generated agentic prompt plan without image generation.',
+        plan
+      });
+    }
 
-    console.log('Generating comics for', today);
-
-    // Generate both variants
-    const [scriptA, scriptB] = await Promise.all([
-      generateComicScript(env.AI, MODEL_A, today),
-      generateComicScript(env.AI, MODEL_B, today)
-    ]);
-
-    console.log('Scripts generated, rendering SVGs...');
-
-    // Render to SVG
-    const svgA = renderComicToSVG(scriptA);
-    const svgB = renderComicToSVG(scriptB);
-
-    console.log('SVGs rendered, uploading to R2...');
-
-    // Upload to R2
-    await Promise.all([
-      env.COMICS_BUCKET.put(keyA, svgA, {
-        httpMetadata: { contentType: 'image/svg+xml' }
-      }),
-      env.COMICS_BUCKET.put(keyB, svgB, {
-        httpMetadata: { contentType: 'image/svg+xml' }
-      })
-    ]);
-
-    console.log('Uploaded to R2, saving metadata to D1...');
-
-    // Save to D1
-    await env.DB.prepare(
-      'INSERT OR REPLACE INTO comics (day, prompt, model_a, model_b, r2_key_a, r2_key_b, script_a, script_b, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(
-      today,
-      scriptA.title,
-      MODEL_A,
-      MODEL_B,
-      keyA,
-      keyB,
-      JSON.stringify(scriptA),
-      JSON.stringify(scriptB),
-      Math.floor(Date.now() / 1000)
-    ).run();
-
-    console.log('Saved to D1 successfully!');
+    const result = await runAgenticComicWorkflow(env, {
+      day,
+      force_topic: forceTopic,
+      trigger: 'manual'
+    });
 
     return Response.json({
       success: true,
-      day: today,
-      title: scriptA.title,
+      day,
+      title: result.title,
+      run_id: result.run_id,
+      panel_count: result.panel_count,
+      character_count: result.character_count,
+      topic_candidates: result.topic_candidates,
+      selected_topic: result.selected_topic,
+      cast: result.cast,
       models: {
-        a: MODEL_A,
-        b: MODEL_B
+        a: result.model_a,
+        b: result.model_b
       },
       r2_keys: {
-        a: keyA,
-        b: keyB
+        a: result.image_key_a,
+        b: result.image_key_b
       },
-      svg_lengths: {
-        a: svgA.length,
-        b: svgB.length
-      },
-      scripts: {
-        a: scriptA,
-        b: scriptB
-      },
-      message: 'Comic generated successfully! Visit /api/today to see it.'
+      artifact_keys: result.artifact_keys,
+      workflow_log: result.workflow_log,
+      message: 'Graphic comic generated successfully via agentic workflow. Visit /api/today to see it.'
     });
 
   } catch (err: any) {
@@ -128,9 +107,24 @@ export async function onRequestPost(context: any) {
 // Also support GET for easier testing
 export async function onRequestGet(context: any) {
   return Response.json({
-    message: 'Test comic generation endpoint',
+    message: 'Agentic graphic comic generation endpoint',
     method: 'POST',
     auth: 'Authorization: Bearer <TEST_SECRET>',
-    example: 'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" https://your-site.com/api/test-generate'
+    examples: [
+      'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" https://your-site.com/api/test-generate',
+      'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" -H "Content-Type: application/json" -d \'{"topic":"cache invalidation incident","force":"1"}\' https://your-site.com/api/test-generate',
+      'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" -H "Content-Type: application/json" -d \'{"dry_run":"1"}\' https://your-site.com/api/test-generate'
+    ]
   });
+}
+
+async function tryParseJson(request: Request) {
+  try {
+    if (request.headers.get('Content-Type')?.includes('application/json')) {
+      return await request.json();
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }

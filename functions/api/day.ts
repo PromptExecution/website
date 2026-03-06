@@ -1,4 +1,5 @@
 // GET /api/day?day=YYYY-MM-DD - Returns a specific day's comic variants + vote counts
+import { arrayBufferToBase64, normalizeContentType } from '../lib/encoding';
 
 export async function onRequestGet(context: any) {
   const { request, env } = context;
@@ -42,6 +43,8 @@ export async function onRequestGet(context: any) {
 
     const imageA = await fileA.arrayBuffer();
     const imageB = await fileB.arrayBuffer();
+    const typeA = fileA.httpMetadata?.contentType || normalizeContentType(comic.r2_key_a);
+    const typeB = fileB.httpMetadata?.contentType || normalizeContentType(comic.r2_key_b);
 
     return Response.json({
       day,
@@ -49,13 +52,13 @@ export async function onRequestGet(context: any) {
       variants: {
         a: {
           model: comic.model_a,
-          imageUrl: `data:image/svg+xml;base64,${btoa(String.fromCharCode(...new Uint8Array(imageA)))}`,
+          imageUrl: `data:${typeA};base64,${arrayBufferToBase64(imageA)}`,
           votes: votesA,
           script: comic.script_a
         },
         b: {
           model: comic.model_b,
-          imageUrl: `data:image/svg+xml;base64,${btoa(String.fromCharCode(...new Uint8Array(imageB)))}`,
+          imageUrl: `data:${typeB};base64,${arrayBufferToBase64(imageB)}`,
           votes: votesB,
           script: comic.script_b
         }

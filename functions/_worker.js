@@ -1,10 +1,10 @@
 // Main Worker entry point with cron trigger for daily comic generation
 
-import { generateComicScript } from './lib/comic-generator';
-import { renderComicToSVG } from './lib/svg-renderer';
+import { runAgenticComicWorkflow } from './lib/agentic-comic-workflow';
 import { onRequestGet as getToday } from './api/today';
 import { onRequestGet as getArchive } from './api/archive';
 import { onRequestGet as getDay } from './api/day';
+import { onRequestGet as getWorkflow } from './api/workflow';
 import { onRequestGet as getPushKey } from './api/push-key';
 import { onRequestPost as postVote } from './api/vote';
 import { onRequestPost as postSubscribe, onRequestDelete as deleteSubscribe } from './api/subscribe';
@@ -13,63 +13,37 @@ import { onRequestGet as getTestGenerate, onRequestPost as postTestGenerate } fr
 export default {
   // Scheduled cron trigger (9 AM UTC daily)
   async scheduled(event, env, ctx) {
-    console.log('Cron trigger: Generating daily comic');
+    console.log('Cron trigger: starting agentic graphic comic workflow');
 
     const today = new Date().toISOString().split('T')[0];
-    const keyA = `comics/${today}/a.svg`;
-    const keyB = `comics/${today}/b.svg`;
+    const keyA = `comics/${today}/a.png`;
+    const keyB = `comics/${today}/b.png`;
+    const legacyKeyA = `comics/${today}/a.svg`;
+    const legacyKeyB = `comics/${today}/b.svg`;
 
     try {
       // Generate only when today's object does not exist.
-      const [existingA, existingB] = await Promise.all([
+      const [existingA, existingB, existingLegacyA, existingLegacyB] = await Promise.all([
         env.COMICS_BUCKET.head(keyA),
         env.COMICS_BUCKET.head(keyB),
+        env.COMICS_BUCKET.head(legacyKeyA),
+        env.COMICS_BUCKET.head(legacyKeyB),
       ]);
-      if (existingA || existingB) {
-        console.log(`Comic object for ${today} already exists in R2, skipping`);
+      if (existingA || existingB || existingLegacyA || existingLegacyB) {
+        console.log(`Comic object for ${today} already exists in R2 (png/svg), skipping`);
         return;
       }
 
-      // Generate from two different models
-      const MODEL_A = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-      const MODEL_B = '@cf/mistral/mistral-7b-instruct-v0.2-lora';
+      const result = await runAgenticComicWorkflow(env, {
+        day: today,
+        trigger: 'cron'
+      });
 
-      console.log('Generating comic scripts...');
-      const [scriptA, scriptB] = await Promise.all([
-        generateComicScript(env.AI, MODEL_A, today),
-        generateComicScript(env.AI, MODEL_B, today)
-      ]);
-
-      console.log('Rendering SVGs...');
-      const svgA = renderComicToSVG(scriptA);
-      const svgB = renderComicToSVG(scriptB);
-
-      // Store in R2
-      await Promise.all([
-        env.COMICS_BUCKET.put(keyA, svgA, {
-          httpMetadata: { contentType: 'image/svg+xml' }
-        }),
-        env.COMICS_BUCKET.put(keyB, svgB, {
-          httpMetadata: { contentType: 'image/svg+xml' }
-        })
-      ]);
-
-      // Store metadata in D1
-      await env.DB.prepare(
-        'INSERT OR REPLACE INTO comics (day, prompt, model_a, model_b, r2_key_a, r2_key_b, script_a, script_b, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-      ).bind(
-        today,
-        scriptA.title,
-        MODEL_A,
-        MODEL_B,
-        keyA,
-        keyB,
-        JSON.stringify(scriptA),
-        JSON.stringify(scriptB),
-        Math.floor(Date.now() / 1000)
-      ).run();
-
-      console.log(`Comic for ${today} generated successfully`);
+      console.log(`Comic for ${today} generated successfully`, {
+        runId: result.run_id,
+        modelA: result.model_a,
+        modelB: result.model_b
+      });
 
       // Send push notifications
       await sendPushNotifications(env, today);
@@ -102,6 +76,7 @@ export default {
       'GET /api/today': getToday,
       'GET /api/day': getDay,
       'GET /api/archive': getArchive,
+      'GET /api/workflow': getWorkflow,
       'GET /api/push-key': getPushKey,
       'POST /api/vote': postVote,
       'POST /api/subscribe': postSubscribe,

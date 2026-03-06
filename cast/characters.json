@@ -1,0 +1,65 @@
+[
+  {
+    "id": "robot",
+    "name": "LLM Robot",
+    "role": "probabilistic stick-figure robot",
+    "description": "Square robot head with short antenna, expressive dot eyes, concise deadpan delivery.",
+    "voice": "Technical, probabilistic, occasionally overconfident.",
+    "visual_traits": [
+      "square head",
+      "single antenna",
+      "minimal stick body"
+    ],
+    "sample_image": "/cast/samples/robot.svg"
+  },
+  {
+    "id": "engineer",
+    "name": "Engineer",
+    "role": "straight-man human developer",
+    "description": "Standard stick figure with round head, neutral expression, practical posture.",
+    "voice": "Curious, direct, often confused by the robot.",
+    "visual_traits": [
+      "round head",
+      "plain stick body"
+    ],
+    "sample_image": "/cast/samples/engineer.svg"
+  },
+  {
+    "id": "simon",
+    "name": "Simon (BOFH)",
+    "role": "system administrator",
+    "description": "Stick figure with dark sunglasses and a coffee mug, slightly smug stance.",
+    "voice": "Dry, sharp, one-line punchlines.",
+    "visual_traits": [
+      "black sunglasses",
+      "coffee mug",
+      "deadpan posture"
+    ],
+    "sample_image": "/cast/samples/simon.svg"
+  },
+  {
+    "id": "founder",
+    "name": "Startup Founder",
+    "role": "AI hype character",
+    "description": "Animated stick figure gesturing with a marker near a fake growth chart.",
+    "voice": "Buzzword-heavy, sales-pitch cadence.",
+    "visual_traits": [
+      "energetic arm pose",
+      "simple trend arrow sketch"
+    ],
+    "sample_image": "/cast/samples/founder.svg"
+  },
+  {
+    "id": "cat",
+    "name": "The Cat",
+    "role": "chaotic wildcard",
+    "description": "Tiny line-drawn cat with upright tail and inconsistent gaze direction.",
+    "voice": "No dialogue; visual chaos.",
+    "visual_traits": [
+      "small triangular ears",
+      "upright tail",
+      "tiny silhouette"
+    ],
+    "sample_image": "/cast/samples/cat.svg"
+  }
+]

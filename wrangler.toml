@@ -34,6 +34,11 @@ id = "preview_kv_namespace_id"  # Replace with actual ID
 [env.production.ai]
 binding = "AI"
 
+[env.production.vars]
+IMAGE_MODEL_A = "@cf/bytedance/stable-diffusion-xl-lightning"
+IMAGE_MODEL_B = "@cf/black-forest-labs/flux-1-schnell"
+TOPIC_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+
 # Analytics Engine (optional, for vote tracking)
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
