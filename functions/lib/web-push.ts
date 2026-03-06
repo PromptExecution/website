@@ -42,10 +42,11 @@ export async function sendDailyComicPushNotifications(env: any, day: string, dep
   const payload = buildDailyComicPayload(env, day);
   let sent = 0;
   let deleted = 0;
+  let failed = 0;
 
   console.log(`Sending push to ${subscriptions.length} subscribers`);
 
-  const results = await Promise.allSettled(
+  await Promise.all(
     subscriptions.map(async (subscription) => {
       try {
         await sendPushToSubscription(env, subscription, payload, deps);
@@ -61,14 +62,15 @@ export async function sendDailyComicPushNotifications(env: any, day: string, dep
             'DELETE FROM push_subscriptions WHERE endpoint = ?'
           ).bind(subscription.endpoint).run();
           deleted += 1;
+        } else {
+          failed += 1;
         }
       }
     })
   );
 
-  const rejected = results.filter((result) => result.status === 'rejected').length;
-  console.log('Push notifications processed', { sent, deleted, rejected });
-  return { sent, deleted, skipped: false };
+  console.log('Push notifications processed', { sent, deleted, failed });
+  return { sent, deleted, failed, skipped: false };
 }
 
 export async function sendPushToSubscription(
