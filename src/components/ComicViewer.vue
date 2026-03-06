@@ -1,0 +1,474 @@
+<script setup lang="ts">
+import { computed, ref, onMounted } from 'vue';
+
+type ComicScript = {
+  panel_count?: number;
+  panels?: unknown[];
+} | string | null;
+
+interface ComicVariant {
+  model: string;
+  imageUrl: string;
+  votes: number;
+  script: ComicScript;
+}
+
+interface ComicData {
+  day: string;
+  title: string;
+  variants: {
+    a: ComicVariant;
+    b: ComicVariant;
+  };
+}
+
+const comic = ref<ComicData | null>(null);
+const loading = ref(true);
+const error = ref<string | null>(null);
+const voted = ref<string | null>(null);
+const usingFallback = ref(false);
+const fallbackReason = ref('');
+const props = defineProps<{
+  day?: string;
+}>();
+const emit = defineEmits<{
+  (e: 'request-tab', tabId: string): void;
+}>();
+
+onMounted(async () => {
+  await fetchToday();
+});
+
+const shouldStackVariants = computed(() => {
+  if (!comic.value) return false;
+
+  return [comic.value.variants.a, comic.value.variants.b].some((variant) => getPanelCount(variant.script) >= 3);
+});
+
+async function fetchToday() {
+  try {
+    loading.value = true;
+    usingFallback.value = false;
+    fallbackReason.value = '';
+    const endpoint = props.day
+      ? `/api/day?day=${encodeURIComponent(props.day)}`
+      : '/api/today';
+    const response = await fetch(endpoint);
+
+    if (!response.ok) {
+      comic.value = buildLocalMockComic(props.day);
+      usingFallback.value = true;
+      fallbackReason.value = response.status === 404
+        ? 'No published comic found yet. Showing fallback demo comic.'
+        : `Comic backend returned ${response.status}. Showing fallback demo comic.`;
+      error.value = null;
+      return;
+    }
+
+    comic.value = await response.json();
+    error.value = null;
+  } catch (err: any) {
+    comic.value = buildLocalMockComic(props.day);
+    usingFallback.value = true;
+    fallbackReason.value = 'Comic backend unavailable. Showing fallback demo comic.';
+    error.value = null;
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function vote(variant: 'a' | 'b') {
+  if (!comic.value || voted.value) return;
+
+  try {
+    const response = await fetch('/api/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        day: comic.value.day,
+        variant
+      })
+    });
+
+    if (!response.ok) throw new Error('Vote failed');
+
+    const result = await response.json();
+    voted.value = variant;
+
+    // Update vote counts
+    if (comic.value && result.votes) {
+      comic.value.variants.a.votes = result.votes.a;
+      comic.value.variants.b.votes = result.votes.b;
+    }
+  } catch (err: any) {
+    if (usingFallback.value && comic.value) {
+      voted.value = variant;
+      comic.value.variants[variant].votes += 1;
+      return;
+    }
+    console.error('Vote error:', err);
+    alert('Failed to record vote. Please try again.');
+  }
+}
+
+function totalVotes() {
+  if (!comic.value) return 0;
+  return comic.value.variants.a.votes + comic.value.variants.b.votes;
+}
+
+function scoreLabel() {
+  if (!comic.value) return 'A 0 - 0 B';
+  return `A ${comic.value.variants.a.votes} - ${comic.value.variants.b.votes} B`;
+}
+
+function getPanelCount(script: ComicScript) {
+  if (!script || typeof script === 'string') return 0;
+  if (typeof script.panel_count === 'number') return script.panel_count;
+  if (Array.isArray(script.panels)) return script.panels.length;
+  return 0;
+}
+
+function buildLocalMockComic(day?: string): ComicData {
+  const date = day || new Date().toISOString().split('T')[0];
+  return {
+    day: date,
+    title: 'Local Mock: Prompt Engineering',
+    variants: {
+      a: {
+        model: '@local/mock-model-a',
+        imageUrl: buildMockSvgDataUrl([
+          'Human: "Explain Kubernetes simply."',
+          'Robot> confidence: 0.41',
+          'Robot: "Containers with orchestration."',
+          'Simon: "Close enough."'
+        ]),
+        votes: 0,
+        script: {
+          panel_count: 4
+        }
+      },
+      b: {
+        model: '@local/mock-model-b',
+        imageUrl: buildMockSvgDataUrl([
+          'Human: "How does DNS work?"',
+          'Robot> tokenizing panic',
+          'Robot: "Like phonebooks, but cursed."',
+          'Simon: "Accurate."'
+        ]),
+        votes: 0,
+        script: {
+          panel_count: 4
+        }
+      }
+    }
+  };
+}
+
+function buildMockSvgDataUrl(lines: string[]) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="700" height="420">
+    <rect width="100%" height="100%" fill="white" stroke="black"/>
+    <text x="24" y="44" font-size="22" font-family="Courier New, monospace">LLM DOES NOT COMPUTE (Local)</text>
+    ${lines.map((line, index) =>
+      `<text x="24" y="${95 + index * 70}" font-size="20" font-family="Courier New, monospace">${escapeXml(line)}</text>`
+    ).join('')}
+  </svg>`;
+  return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+}
+
+function escapeXml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+</script>
+
+<template>
+  <div class="comic-viewer">
+    <div v-if="loading" class="loading">
+      <p>⏳ Loading today's comic...</p>
+    </div>
+
+    <div v-else-if="error" class="error">
+      <p>⚠️ {{ error }}</p>
+      <button @click="fetchToday">Retry</button>
+    </div>
+
+    <div v-else-if="comic" class="comic-display">
+      <h2 class="comic-title">{{ comic.title }}</h2>
+      <p class="comic-date">{{ comic.day }}</p>
+      <p v-if="usingFallback" class="fallback-note">⚠️ {{ fallbackReason }}</p>
+
+      <div :class="['variants', { stacked: shouldStackVariants }]">
+        <!-- Variant A -->
+        <div class="variant">
+          <div class="variant-header">
+            <h3>Variant A</h3>
+            <span class="model-tag">{{ comic.variants.a.model.split('/').pop() }}</span>
+          </div>
+
+          <div class="image-container">
+            <img :src="comic.variants.a.imageUrl" alt="Comic Variant A" />
+          </div>
+
+          <div class="vote-section">
+            <button
+              class="vote-btn"
+              :disabled="!!voted"
+              :class="{ selected: voted === 'a' }"
+              @click="vote('a')"
+            >
+              {{ voted === 'a' ? '✓ Voted' : 'Vote A' }}
+            </button>
+            <span class="vote-count">{{ comic.variants.a.votes }} votes</span>
+          </div>
+        </div>
+
+        <!-- Variant B -->
+        <div class="variant">
+          <div class="variant-header">
+            <h3>Variant B</h3>
+            <span class="model-tag">{{ comic.variants.b.model.split('/').pop() }}</span>
+          </div>
+
+          <div class="image-container">
+            <img :src="comic.variants.b.imageUrl" alt="Comic Variant B" />
+          </div>
+
+          <div class="vote-section">
+            <button
+              class="vote-btn"
+              :disabled="!!voted"
+              :class="{ selected: voted === 'b' }"
+              @click="vote('b')"
+            >
+              {{ voted === 'b' ? '✓ Voted' : 'Vote B' }}
+            </button>
+            <span class="vote-count">{{ comic.variants.b.votes }} votes</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="voted" class="thank-you">
+        <p>✅ Thank you for voting! Come back tomorrow for the next comic.</p>
+        <p class="score-line">Current score: <strong>{{ scoreLabel() }}</strong> ({{ totalVotes() }} total votes)</p>
+      </div>
+
+      <div class="instructions">
+        <p>🗳️ <strong>Vote for your favorite!</strong> Two AI models generated these comics from the same prompt.</p>
+        <p>🔔 <a href="#" @click.prevent="emit('request-tab', 'subscribe')">Subscribe</a> to get notified when new comics are published.</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.comic-viewer {
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 40px;
+  font-size: 14px;
+}
+
+.error button {
+  margin-top: 16px;
+  padding: 6px 16px;
+  border: 2px outset #dfdfdf;
+  background: #c0c0c0;
+  cursor: pointer;
+}
+
+.comic-title {
+  font-size: 18px;
+  margin: 0 0 4px 0;
+  font-weight: bold;
+}
+
+.comic-date {
+  color: #666;
+  font-size: 12px;
+  margin: 0 0 20px 0;
+}
+
+.score-line {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.fallback-note {
+  margin: 0 0 12px 0;
+  color: #9b5f00;
+  font-size: 12px;
+}
+
+.variants {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+  align-items: start;
+}
+
+.variants.stacked {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 900px) {
+  .variants {
+    grid-template-columns: 1fr;
+  }
+}
+
+.variant {
+  border: 2px solid #808080;
+  padding: 12px;
+  background: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.variant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.variant-header h3 {
+  font-size: 14px;
+  margin: 0;
+}
+
+.model-tag {
+  font-size: 11px;
+  background: #000080;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+
+.image-container {
+  background: white;
+  border: 1px solid #ccc;
+  margin-bottom: 12px;
+  text-align: center;
+  min-height: clamp(220px, 32vw, 360px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.image-container img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+.variants.stacked .image-container {
+  min-height: auto;
+  padding: 8px;
+}
+
+.variants.stacked .image-container img {
+  max-height: none;
+}
+
+@media (max-width: 640px) {
+  .comic-display {
+    overflow-x: clip;
+  }
+
+  .variant {
+    padding: 10px;
+  }
+
+  .image-container {
+    min-height: auto;
+    padding: 6px;
+  }
+
+  .variant-header {
+    gap: 8px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .model-tag {
+    word-break: break-word;
+  }
+}
+
+.vote-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.vote-btn {
+  padding: 8px 24px;
+  border: 2px outset #dfdfdf;
+  background: #c0c0c0;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.vote-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.vote-btn:active:not(:disabled) {
+  border-style: inset;
+}
+
+.vote-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.vote-btn.selected {
+  background: #000080;
+  color: white;
+}
+
+.vote-count {
+  font-size: 12px;
+  color: #666;
+  font-weight: bold;
+}
+
+.thank-you {
+  background: #ffffcc;
+  border: 2px solid #808080;
+  padding: 12px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.instructions {
+  background: #f0f0f0;
+  border: 2px inset #dfdfdf;
+  padding: 12px;
+  font-size: 12px;
+}
+
+.instructions p {
+  margin: 8px 0;
+}
+
+.instructions a {
+  color: #000080;
+  text-decoration: underline;
+  cursor: pointer;
+}
+</style>

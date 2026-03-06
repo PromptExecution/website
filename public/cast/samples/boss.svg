@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
+  <rect width="220" height="220" fill="#fff"/>
+  <circle cx="96" cy="44" r="16" fill="#fff" stroke="#000" stroke-width="3"/>
+  <line x1="96" y1="60" x2="96" y2="124" stroke="#000" stroke-width="3"/>
+  <line x1="96" y1="88" x2="68" y2="118" stroke="#000" stroke-width="3"/>
+  <line x1="96" y1="88" x2="128" y2="82" stroke="#000" stroke-width="3"/>
+  <line x1="96" y1="124" x2="78" y2="170" stroke="#000" stroke-width="3"/>
+  <line x1="96" y1="124" x2="114" y2="170" stroke="#000" stroke-width="3"/>
+  <polygon points="91,74 101,74 96,86" fill="#000"/>
+  <line x1="96" y1="86" x2="96" y2="102" stroke="#000" stroke-width="2"/>
+  <line x1="144" y1="156" x2="176" y2="122" stroke="#000" stroke-width="3"/>
+  <polygon points="176,122 164,122 176,110" fill="#000"/>
+  <text x="12" y="206" font-size="14" font-family="Courier New, monospace">boss sample</text>
+</svg>

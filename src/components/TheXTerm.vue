@@ -290,25 +290,54 @@ const commandStore = [
 
 
 
-<style>
+<style scoped>
 
 
 .cli-container {
-  /* Adjust the border-radius as needed */
-  /* overflow: hidden; /* Ensures that the child elements adhere to the container's border radius */
   background-color: black;
   color: white;
-  border-radius: 10px; /* This will give rounded corners to the container */
+  border-radius: 10px;
   padding: 10px;
-  height: 200px;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: clamp(420px, calc(100dvh - 260px), 960px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 
 .Terminal {
-  margin: 3;
-  padding: 3;
+  margin: 0;
+  padding: 0;
   text-align: left;
+  width: 100%;
+  height: 100%;
 }
 
+:deep(.t-container) {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 8px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+:deep(.t-window) {
+  min-height: 100% !important;
+  inset: 0 !important;
+  padding: 12px 16px 12px 20px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .cli-container {
+    min-height: clamp(360px, calc(100dvh - 210px), 720px);
+    padding: 8px;
+  }
+
+  :deep(.t-window) {
+    padding: 10px 12px 10px 16px;
+  }
+}
 
 </style>

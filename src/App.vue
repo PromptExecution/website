@@ -3,7 +3,7 @@
 import { onMounted } from 'vue';
 import CookieBanner from '@/components/CookieBanner.vue';
 import PromptExecutionLogo from '@/components/PromptExecutionLogo.vue';
-import TheXTerm from '@/components/TheXTerm.vue';
+import Win95TabContainer from '@/components/Win95TabContainer.vue';
 import { useMainStore } from '@/store/mainStore';
 
 const mainStore = useMainStore();
@@ -23,8 +23,10 @@ import TheFooter from './components/TheFooter.vue';
   <div>
     <PromptExecutionLogo />
   </div>
-  <TheXTerm />
-  <!-- <CommandLineInterface  /> -->
+
+  <!-- Win95-style tabbed interface with Comic, Archive, Subscribe, and CLI tabs -->
+  <Win95TabContainer />
+
   <TheFooter />
 
   <CookieBanner v-if="!mainStore.isCookieConsentSet" />

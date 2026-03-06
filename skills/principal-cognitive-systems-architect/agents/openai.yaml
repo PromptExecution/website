@@ -1,0 +1,4 @@
+interface:
+  display_name: "Principal Cognitive Systems Architect"
+  short_description: "Analyze repos and orchestrate specialist coding agents"
+  default_prompt: "Analyze the repository, break the task into constrained sub-agent tasks, execute high-impact work first, validate after each stage, and report artifacts plus risks."
