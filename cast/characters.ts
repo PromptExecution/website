@@ -1,0 +1,70 @@
+const castData = [
+  {
+    id: 'user',
+    name: 'The User',
+    role: 'confused developer and recurring straight man',
+    description: 'Standard round-head stick figure. Asks vague, underspecified questions and assumes the machine understands intent.',
+    voice: 'Earnest, optimistic, and dangerously imprecise.',
+    visual_traits: [
+      'round head',
+      'plain stick body',
+      'neutral posture'
+    ],
+    sample_image: '/cast/samples/user.svg'
+  },
+  {
+    id: 'robot',
+    name: 'LLM Robot',
+    role: 'probabilistic stick-figure robot',
+    description: 'Square robot head with a short antenna. External dialogue sounds confident; internal monologue appears in cloud bubbles with a technical monospace style.',
+    voice: 'Plausible, overconfident, and visibly reasoning under uncertainty.',
+    visual_traits: [
+      'square head',
+      'single antenna',
+      'minimal stick body',
+      'cloud thought bubble for internal logs'
+    ],
+    sample_image: '/cast/samples/robot.svg'
+  },
+  {
+    id: 'simon',
+    name: 'Simon',
+    role: 'BOFH system administrator',
+    description: 'Stick figure with a fedora and a grey goatee. Arrives late, judges instantly, and ends scenes with one-line operational truth.',
+    voice: 'Dry, cynical, and surgically concise.',
+    visual_traits: [
+      'fedora',
+      'grey goatee',
+      'deadpan posture'
+    ],
+    sample_image: '/cast/samples/simon.svg'
+  },
+  {
+    id: 'boss',
+    name: 'The Boss',
+    role: 'AI hype manager',
+    description: 'Stick figure with a tie, aggressive hand gestures, and a constant urge to replace engineering with automation.',
+    voice: 'Buzzword-heavy, urgent, and strategically uninformed.',
+    visual_traits: [
+      'necktie',
+      'animated arm pose',
+      'boardroom energy'
+    ],
+    sample_image: '/cast/samples/boss.svg'
+  },
+  {
+    id: 'ferris',
+    name: 'Ferris',
+    role: 'silent rust crab cameo',
+    description: 'Small line-drawn crab that appears as a background wildcard or panic signal. Usually does not speak.',
+    voice: 'Silent visual joke.',
+    visual_traits: [
+      'small crab silhouette',
+      'raised claws',
+      'background cameo'
+    ],
+    sample_image: '/cast/samples/ferris.svg'
+  }
+] as const;
+
+export default castData;

@@ -1,4 +1,4 @@
-import castData from '../../cast/characters.json' with { type: 'json' };
+import castData from '../../cast/characters.ts';
 
 export interface CastCharacter {
   id: string;
