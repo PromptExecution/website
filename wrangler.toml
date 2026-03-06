@@ -1,14 +1,10 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "promptexecution-comic"
-main = "functions/_worker.js"
 compatibility_date = "2024-12-01"
 
-# Cloudflare Pages configuration
+# Cloudflare Pages configuration. Keep this file Pages-only so
+# Cloudflare's Pages build system can validate it successfully.
 pages_build_output_dir = "dist"
-
-# Cron trigger for daily comic generation
-[triggers]
-crons = ["0 9 * * *"]  # 9 AM UTC daily
 
 # D1 Database for metadata, votes, subscriptions
 [[d1_databases]]

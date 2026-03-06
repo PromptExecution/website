@@ -1,0 +1,31 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "promptexecution-comic-cron"
+main = "functions/_worker.js"
+compatibility_date = "2024-12-01"
+
+[triggers]
+crons = ["0 9 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "llm-comic-db"
+database_id = "preview_d1_database_id"
+
+[[r2_buckets]]
+binding = "COMICS_BUCKET"
+bucket_name = "llm-comics"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "preview_kv_namespace_id"
+
+[env.production.ai]
+binding = "AI"
+
+[env.production.vars]
+IMAGE_MODEL_A = "@cf/bytedance/stable-diffusion-xl-lightning"
+IMAGE_MODEL_B = "@cf/black-forest-labs/flux-1-schnell"
+TOPIC_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+
+[[analytics_engine_datasets]]
+binding = "ANALYTICS"

@@ -10,6 +10,7 @@ import { onRequestGet as getPushKey } from './api/push-key.ts';
 import { onRequestPost as postVote } from './api/vote.ts';
 import { onRequestPost as postSubscribe, onRequestDelete as deleteSubscribe } from './api/subscribe.ts';
 import { onRequestGet as getTestGenerate, onRequestPost as postTestGenerate } from './api/test-generate.ts';
+import { sendDailyComicPushNotifications } from './lib/web-push.ts';
 
 export default {
   fetch: handleFetch,
@@ -103,7 +104,7 @@ export async function scheduled(event, env, ctx) {
     });
 
     // Send push notifications
-    await sendPushNotifications(env, today);
+    await sendDailyComicPushNotifications(env, today);
 
   } catch (err) {
     console.error('Error generating daily comic:', err);
@@ -121,88 +122,4 @@ function withCorsHeaders(response) {
     statusText: response.statusText,
     headers
   });
-}
-
-async function sendPushNotifications(env, day) {
-  try {
-    if (String(env.ENABLE_PUSH_NOTIFICATIONS || '0') !== '1') {
-      console.log('Push delivery is disabled, skipping push notifications');
-      return;
-    }
-
-    if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) {
-      console.log('Push keys are not configured, skipping push delivery');
-      return;
-    }
-
-    // Get all subscriptions that haven't been notified today
-    const subs = await env.DB.prepare(
-      'SELECT * FROM push_subscriptions WHERE last_sent_day IS NULL OR last_sent_day < ?'
-    ).bind(day).all();
-
-    if (subs.results.length === 0) {
-      console.log('No subscriptions to notify');
-      return;
-    }
-
-    console.log(`Sending push to ${subs.results.length} subscribers`);
-
-    const payload = JSON.stringify({
-      title: 'New LLM DOES NOT COMPUTE Comic!',
-      body: `Today's comic is ready. Vote for your favorite!`,
-      icon: '/PromptExecution-LogoV2-semi-transparent.webp',
-      url: `https://promptexecution.com/comic`
-    });
-
-    // Send to all subscribers
-    const pushPromises = subs.results.map(async (sub) => {
-      try {
-        await sendWebPush(sub, payload, env.VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY);
-
-        // Update last_sent_day
-        await env.DB.prepare(
-          'UPDATE push_subscriptions SET last_sent_day = ? WHERE endpoint = ?'
-        ).bind(day, sub.endpoint).run();
-      } catch (err) {
-        console.error('Push failed for', sub.endpoint, err);
-
-        // If subscription is invalid, remove it
-        if (err.statusCode === 410) {
-          await env.DB.prepare(
-            'DELETE FROM push_subscriptions WHERE endpoint = ?'
-          ).bind(sub.endpoint).run();
-        }
-      }
-    });
-
-    await Promise.allSettled(pushPromises);
-    console.log('Push notifications sent');
-
-  } catch (err) {
-    console.error('Error sending push notifications:', err);
-  }
-}
-
-async function sendWebPush(subscription, payload, vapidPublicKey, vapidPrivateKey) {
-  // Web Push implementation using VAPID
-  // See: https://developers.cloudflare.com/workers/examples/web-push/
-
-  const { endpoint, p256dh, auth } = subscription;
-
-  // This is a simplified version - in production you'd use a library
-  // or implement the full Web Push protocol
-  // For now, this is a placeholder
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'TTL': '86400',
-    },
-    body: payload
-  });
-
-  if (!response.ok) {
-    throw { statusCode: response.status, message: await response.text() };
-  }
 }

@@ -5,17 +5,21 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:pages": "npx wrangler pages dev dist --ip 127.0.0.1 --port 8788",
+    "dev:pages": "wrangler pages dev dist --ip 127.0.0.1 --port 8788",
+    "dev:cron": "wrangler dev -c wrangler.cron.toml --ip 127.0.0.1 --port 8790",
     "build": "vue-tsc && vite build",
-    "test:contracts": "node --experimental-strip-types scripts/test-api-contracts.mjs",
+    "test:contracts": "bun scripts/test-api-contracts.mjs",
     "smoke:local": "./scripts/smoke-local.sh",
-    "ci:local": "npm run build && npm run test:contracts && npm run smoke:local",
+    "ci:local": "bun run build && bun run test:contracts && bun run smoke:local",
+    "generate:vapid": "@pushforge/builder vapid",
     "preview": "vite preview",
-    "deploy": "npm run build && npx wrangler pages deploy dist --project-name=promptexecution-comic --env production",
-    "db:init": "npx wrangler d1 execute llm-comic-db --file=./schema.sql",
-    "db:init:local": "npx wrangler d1 execute llm-comic-db --local --file=./schema.sql",
-    "db:query": "npx wrangler d1 execute llm-comic-db --command",
-    "logs": "npx wrangler pages deployment tail --project-name=promptexecution-comic"
+    "deploy": "bun run deploy:pages",
+    "deploy:pages": "bun run build && wrangler pages deploy dist --project-name=promptexecution-comic --env production",
+    "deploy:cron": "wrangler deploy -c wrangler.cron.toml --env production",
+    "db:init": "wrangler d1 execute llm-comic-db --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute llm-comic-db --local --file=./schema.sql",
+    "db:query": "wrangler d1 execute llm-comic-db --command",
+    "logs": "wrangler pages deployment tail --project-name=promptexecution-comic"
   },
   "dependencies": {
     "@achrinza/node-ipc": "10.1.11",
@@ -32,11 +36,12 @@
     "vue-web-terminal": "3.4.1"
   },
   "devDependencies": {
+    "@pushforge/builder": "2.0.1",
     "@vitejs/plugin-vue": "6.0.1",
     "typescript": "5.9.2",
     "vite": "7.1.1",
     "vue-tsc": "3.0.5",
     "wrangler": "^4.0.0"
   },
-  "packageManager": "npm@10.9.2"
+  "packageManager": "bun@1.3.10"
 }

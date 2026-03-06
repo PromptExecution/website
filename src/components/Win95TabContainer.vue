@@ -160,6 +160,9 @@ onMounted(() => {
   background: #ffffff;
   border: 1px solid #7f9db9;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .status-bar {
@@ -175,5 +178,21 @@ onMounted(() => {
   background: #ece9d8;
   flex: 1;
   margin: 0;
+}
+
+@media (max-width: 767px) {
+  .comic-window {
+    margin: 8px auto 16px;
+    min-height: calc(100dvh - 64px);
+  }
+
+  .tab-content {
+    min-height: 420px;
+    padding: 12px;
+  }
+
+  .status-bar {
+    flex-direction: column;
+  }
 }
 </style>

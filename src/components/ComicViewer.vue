@@ -1,22 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
+
+type ComicScript = {
+  panel_count?: number;
+  panels?: unknown[];
+} | string | null;
+
+interface ComicVariant {
+  model: string;
+  imageUrl: string;
+  votes: number;
+  script: ComicScript;
+}
 
 interface ComicData {
   day: string;
   title: string;
   variants: {
-    a: {
-      model: string;
-      imageUrl: string;
-      votes: number;
-      script: string;
-    };
-    b: {
-      model: string;
-      imageUrl: string;
-      votes: number;
-      script: string;
-    };
+    a: ComicVariant;
+    b: ComicVariant;
   };
 }
 
@@ -35,6 +37,12 @@ const emit = defineEmits<{
 
 onMounted(async () => {
   await fetchToday();
+});
+
+const shouldStackVariants = computed(() => {
+  if (!comic.value) return false;
+
+  return [comic.value.variants.a, comic.value.variants.b].some((variant) => getPanelCount(variant.script) >= 3);
 });
 
 async function fetchToday() {
@@ -113,6 +121,13 @@ function scoreLabel() {
   return `A ${comic.value.variants.a.votes} - ${comic.value.variants.b.votes} B`;
 }
 
+function getPanelCount(script: ComicScript) {
+  if (!script || typeof script === 'string') return 0;
+  if (typeof script.panel_count === 'number') return script.panel_count;
+  if (Array.isArray(script.panels)) return script.panels.length;
+  return 0;
+}
+
 function buildLocalMockComic(day?: string): ComicData {
   const date = day || new Date().toISOString().split('T')[0];
   return {
@@ -128,7 +143,9 @@ function buildLocalMockComic(day?: string): ComicData {
           'Simon: "Close enough."'
         ]),
         votes: 0,
-        script: 'local mock variant a'
+        script: {
+          panel_count: 4
+        }
       },
       b: {
         model: '@local/mock-model-b',
@@ -139,7 +156,9 @@ function buildLocalMockComic(day?: string): ComicData {
           'Simon: "Accurate."'
         ]),
         votes: 0,
-        script: 'local mock variant b'
+        script: {
+          panel_count: 4
+        }
       }
     }
   };
@@ -182,7 +201,7 @@ function escapeXml(text: string) {
       <p class="comic-date">{{ comic.day }}</p>
       <p v-if="usingFallback" class="fallback-note">⚠️ {{ fallbackReason }}</p>
 
-      <div class="variants">
+      <div :class="['variants', { stacked: shouldStackVariants }]">
         <!-- Variant A -->
         <div class="variant">
           <div class="variant-header">
@@ -289,9 +308,17 @@ function escapeXml(text: string) {
 
 .variants {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   margin-bottom: 20px;
+  align-items: start;
+}
+
+.variants.stacked {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 @media (max-width: 900px) {
@@ -304,6 +331,8 @@ function escapeXml(text: string) {
   border: 2px solid #808080;
   padding: 12px;
   background: white;
+  display: flex;
+  flex-direction: column;
 }
 
 .variant-header {
@@ -331,15 +360,52 @@ function escapeXml(text: string) {
   border: 1px solid #ccc;
   margin-bottom: 12px;
   text-align: center;
-  min-height: 300px;
+  min-height: clamp(220px, 32vw, 360px);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: auto;
 }
 
 .image-container img {
+  display: block;
+  width: 100%;
   max-width: 100%;
   height: auto;
+}
+
+.variants.stacked .image-container {
+  min-height: auto;
+  padding: 8px;
+}
+
+.variants.stacked .image-container img {
+  max-height: none;
+}
+
+@media (max-width: 640px) {
+  .comic-display {
+    overflow-x: clip;
+  }
+
+  .variant {
+    padding: 10px;
+  }
+
+  .image-container {
+    min-height: auto;
+    padding: 6px;
+  }
+
+  .variant-header {
+    gap: 8px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .model-tag {
+    word-break: break-word;
+  }
 }
 
 .vote-section {
