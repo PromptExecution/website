@@ -30,6 +30,21 @@ export default defineConfig({
   //   include: [ 'vue-command' ]
   // },
   plugins: [vue()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('three')) {
+            return 'three-vendor';
+          }
+
+          if (id.includes('vue-web-terminal')) {
+            return 'terminal-vendor';
+          }
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src')

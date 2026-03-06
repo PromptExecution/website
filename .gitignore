@@ -19,4 +19,34 @@ dist/*
 
 #bun.lockb
 *.mjs
+!scripts/test-api-contracts.mjs
 **/*\:Zone.Identifier
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+dist-ssr
+*.local
+
+# Cloudflare
+.wrangler/
+.dev.vars
+wrangler.toml.local
+
+# Secrets and environment
+.env
+.env.local
+.env.production
+*.pem
+*.key
+vapid-keys.json
+
+# OS
+.DS_Store
+Thumbs.db

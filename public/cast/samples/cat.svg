@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
+  <rect width="220" height="220" fill="#fff"/>
+  <path d="M78 126 L92 100 L106 126 Z" fill="#fff" stroke="#000" stroke-width="3"/>
+  <path d="M106 126 L120 100 L134 126 Z" fill="#fff" stroke="#000" stroke-width="3"/>
+  <ellipse cx="106" cy="138" rx="30" ry="20" fill="#fff" stroke="#000" stroke-width="3"/>
+  <circle cx="96" cy="134" r="2.5" fill="#000"/>
+  <circle cx="116" cy="134" r="2.5" fill="#000"/>
+  <line x1="106" y1="140" x2="106" y2="146" stroke="#000" stroke-width="2"/>
+  <path d="M132 126 Q154 104 162 120" fill="none" stroke="#000" stroke-width="3"/>
+  <text x="12" y="206" font-size="14" font-family="Courier New, monospace">cat sample</text>
+</svg>
