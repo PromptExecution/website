@@ -11,6 +11,7 @@
     "test:contracts": "bun scripts/test-api-contracts.mjs",
     "smoke:local": "./scripts/smoke-local.sh",
     "ci:local": "bun run build && bun run test:contracts && bun run smoke:local",
+    "generate:vapid": "@pushforge/builder vapid",
     "preview": "vite preview",
     "deploy": "bun run deploy:pages",
     "deploy:pages": "bun run build && wrangler pages deploy dist --project-name=promptexecution-comic --env production",
@@ -22,7 +23,6 @@
   },
   "dependencies": {
     "@achrinza/node-ipc": "10.1.11",
-    "@pushforge/builder": "^2.0.1",
     "@types/three": "^0.179.0",
     "mitt": "^3.0.1",
     "path": "^0.12.7",
@@ -36,6 +36,7 @@
     "vue-web-terminal": "3.4.1"
   },
   "devDependencies": {
+    "@pushforge/builder": "2.0.1",
     "@vitejs/plugin-vue": "6.0.1",
     "typescript": "5.9.2",
     "vite": "7.1.1",
