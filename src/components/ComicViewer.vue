@@ -108,6 +108,16 @@ function isLocalDev() {
   return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 }
 
+function totalVotes() {
+  if (!comic.value) return 0;
+  return comic.value.variants.a.votes + comic.value.variants.b.votes;
+}
+
+function scoreLabel() {
+  if (!comic.value) return 'A 0 - 0 B';
+  return `A ${comic.value.variants.a.votes} - ${comic.value.variants.b.votes} B`;
+}
+
 function buildLocalMockComic(day?: string): ComicData {
   const date = day || new Date().toISOString().split('T')[0];
   return {
@@ -228,6 +238,7 @@ function escapeXml(text: string) {
 
       <div v-if="voted" class="thank-you">
         <p>✅ Thank you for voting! Come back tomorrow for the next comic.</p>
+        <p class="score-line">Current score: <strong>{{ scoreLabel() }}</strong> ({{ totalVotes() }} total votes)</p>
       </div>
 
       <div class="instructions">
@@ -267,6 +278,11 @@ function escapeXml(text: string) {
   color: #666;
   font-size: 12px;
   margin: 0 0 20px 0;
+}
+
+.score-line {
+  margin-top: 8px;
+  font-size: 13px;
 }
 
 .variants {

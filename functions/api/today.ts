@@ -6,22 +6,31 @@ export async function onRequestGet(context: any) {
   const today = new Date().toISOString().split('T')[0];
 
   try {
-    // Check if today's comic exists
-    const comic = await env.DB.prepare(
+    // Try today's comic first.
+    let comic = await env.DB.prepare(
       'SELECT * FROM comics WHERE day = ?'
     ).bind(today).first();
 
     if (!comic) {
-      return Response.json({
-        error: 'No comic for today yet',
-        day: today
-      }, { status: 404 });
+      // Fall back to most recent comic for homepage Comic tab.
+      comic = await env.DB.prepare(
+        'SELECT * FROM comics ORDER BY day DESC LIMIT 1'
+      ).first();
+
+      if (!comic) {
+        return Response.json({
+          error: 'No comics available yet',
+          day: today
+        }, { status: 404 });
+      }
     }
+
+    const comicDay = comic.day as string;
 
     // Get vote counts
     const votes = await env.DB.prepare(
       'SELECT variant, COUNT(*) as count FROM votes WHERE day = ? GROUP BY variant'
-    ).bind(today).all();
+    ).bind(comicDay).all();
 
     const votesA = votes.results.find((v: any) => v.variant === 'a')?.count || 0;
     const votesB = votes.results.find((v: any) => v.variant === 'b')?.count || 0;
@@ -32,7 +41,7 @@ export async function onRequestGet(context: any) {
     if (!urlA || !urlB) {
       return Response.json({
         error: 'Comic images not found',
-        day: today
+        day: comicDay
       }, { status: 500 });
     }
 
@@ -42,7 +51,7 @@ export async function onRequestGet(context: any) {
     const typeB = urlB.httpMetadata?.contentType || normalizeContentType(comic.r2_key_b);
 
     return Response.json({
-      day: today,
+      day: comicDay,
       title: comic.prompt,
       variants: {
         a: {
