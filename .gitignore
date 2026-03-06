@@ -19,6 +19,7 @@ dist/*
 
 #bun.lockb
 *.mjs
+!scripts/test-api-contracts.mjs
 **/*\:Zone.Identifier
 
 # Logs
