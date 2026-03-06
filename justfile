@@ -20,7 +20,7 @@ dev-ai:
 
 dev-cron:
   @npm run db:init:local
-  @npx wrangler dev --ip 127.0.0.1 --port 8790
+  @npm run dev:cron
 
 dev-ui:
   @npm run dev

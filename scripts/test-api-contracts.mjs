@@ -8,6 +8,7 @@ const voteApi = await import('../functions/api/vote.ts');
 const pushKeyApi = await import('../functions/api/push-key.ts');
 const subscribeApi = await import('../functions/api/subscribe.ts');
 const workflow = await import('../functions/lib/agentic-comic-workflow.ts');
+const webPush = await import('../functions/lib/web-push.ts');
 
 class MockBucket {
   constructor(objects) {
@@ -129,6 +130,15 @@ class MockDB {
       };
     }
 
+    if (sql.includes('SELECT * FROM push_subscriptions WHERE last_sent_day IS NULL OR last_sent_day < ?')) {
+      const day = params[0];
+      return {
+        results: this.subscriptions.filter((subscription) =>
+          !subscription.last_sent_day || subscription.last_sent_day < day
+        )
+      };
+    }
+
     throw new Error(`Unhandled all() query: ${sql}`);
   }
 
@@ -161,6 +171,15 @@ class MockDB {
     if (sql.includes('DELETE FROM push_subscriptions WHERE endpoint = ?')) {
       const endpoint = params[0];
       this.subscriptions = this.subscriptions.filter((item) => item.endpoint !== endpoint);
+      return { success: true };
+    }
+
+    if (sql.includes('UPDATE push_subscriptions SET last_sent_day = ? WHERE endpoint = ?')) {
+      const [day, endpoint] = params;
+      const subscription = this.subscriptions.find((item) => item.endpoint === endpoint);
+      if (subscription) {
+        subscription.last_sent_day = day;
+      }
       return { success: true };
     }
 
@@ -208,7 +227,18 @@ function makeEnv() {
     COMICS_BUCKET: bucket,
     AUTO_GENERATE_ON_READ: '0',
     ALLOW_LOCAL_BOOTSTRAP: '0',
-    ENABLE_PUSH_NOTIFICATIONS: '0'
+    ENABLE_PUSH_NOTIFICATIONS: '0',
+    VAPID_PRIVATE_KEY: JSON.stringify({
+      alg: 'ES256',
+      kty: 'EC',
+      crv: 'P-256',
+      d: 'abc',
+      x: 'def',
+      y: 'ghi'
+    }),
+    VAPID_PUBLIC_KEY: 'public-key',
+    VAPID_SUBJECT: 'mailto:hello@promptexecution.com',
+    SITE_URL: 'https://promptexecution.com'
   };
 }
 
@@ -303,6 +333,52 @@ async function main() {
       })
     });
     assert.equal(response.status, 503);
+  }
+
+  {
+    const pushEnv = makeEnv();
+    pushEnv.ENABLE_PUSH_NOTIFICATIONS = '1';
+    pushEnv.DB.subscriptions.push(
+      {
+        endpoint: 'https://push.example/ok',
+        p256dh: 'key-a',
+        auth: 'auth-a',
+        last_sent_day: null
+      },
+      {
+        endpoint: 'https://push.example/gone',
+        p256dh: 'key-b',
+        auth: 'auth-b',
+        last_sent_day: null
+      }
+    );
+
+    const buildCalls = [];
+    const fetchCalls = [];
+    const result = await webPush.sendDailyComicPushNotifications(pushEnv, '2026-03-06', {
+      async buildRequest(options) {
+        buildCalls.push(options);
+        return {
+          endpoint: options.subscription.endpoint,
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: new ArrayBuffer(8)
+        };
+      },
+      async fetchImpl(endpoint) {
+        fetchCalls.push(endpoint);
+        if (endpoint.endsWith('/gone')) {
+          return new Response('gone', { status: 410 });
+        }
+        return new Response(null, { status: 201 });
+      }
+    });
+
+    assert.deepEqual(result, { sent: 1, deleted: 1, skipped: false });
+    assert.equal(buildCalls.length, 2);
+    assert.deepEqual(fetchCalls, ['https://push.example/ok', 'https://push.example/gone']);
+    assert.equal(pushEnv.DB.subscriptions.length, 1);
+    assert.equal(pushEnv.DB.subscriptions[0].last_sent_day, '2026-03-06');
+    assert.equal(buildCalls[0].message.adminContact, 'mailto:hello@promptexecution.com');
   }
 
   {
