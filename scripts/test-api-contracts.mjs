@@ -373,7 +373,7 @@ async function main() {
       }
     });
 
-    assert.deepEqual(result, { sent: 1, deleted: 1, skipped: false });
+    assert.deepEqual(result, { sent: 1, deleted: 1, failed: 0, skipped: false });
     assert.equal(buildCalls.length, 2);
     assert.deepEqual(fetchCalls, ['https://push.example/ok', 'https://push.example/gone']);
     assert.equal(pushEnv.DB.subscriptions.length, 1);
