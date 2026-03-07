@@ -23,6 +23,7 @@ interface PulseMarker {
 interface CircuitLine {
   group: THREE.Group;
   segments: THREE.Mesh[];
+  joints: THREE.Mesh[];
   material: THREE.MeshBasicMaterial;
   baseColor: THREE.Color;
   sampler: PathSampler;
@@ -53,7 +54,7 @@ const FLOW_NEAR_LIMIT = 48;
 const PULSE_SPEED_BASE = 0.032;
 const PULSE_SPEED_FLOW_GAIN = 0.0022;
 
-const SEGMENT_AXIS = new THREE.Vector3(1, 0, 0);
+const PIPE_AXIS = new THREE.Vector3(0, 1, 0);
 const cameraToGroup = new THREE.Vector3();
 const colorNear = new THREE.Color(0xc8ffff);
 const focalPoint = new THREE.Vector3(0, 0, 0);
@@ -157,16 +158,16 @@ function samplePath(sampler: PathSampler, t: number) {
   return sampler.points[sampler.points.length - 1].clone();
 }
 
-function createWireSegment(start: THREE.Vector3, end: THREE.Vector3, material: THREE.MeshBasicMaterial, baseThickness: number) {
+function createPipeSegment(start: THREE.Vector3, end: THREE.Vector3, material: THREE.MeshBasicMaterial, baseThickness: number) {
   const direction = end.clone().sub(start);
   const length = direction.length();
   if (length <= 0.001) return null;
 
-  const geometry = new THREE.BoxGeometry(length, 1, 1);
+  const geometry = new THREE.CylinderGeometry(1, 1, length, 12, 1, false);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.copy(start).add(end).multiplyScalar(0.5);
-  mesh.quaternion.setFromUnitVectors(SEGMENT_AXIS, direction.normalize());
-  mesh.scale.set(1, baseThickness, baseThickness);
+  mesh.quaternion.setFromUnitVectors(PIPE_AXIS, direction.normalize());
+  mesh.scale.set(baseThickness, 1, baseThickness);
   return mesh;
 }
 
@@ -221,13 +222,24 @@ function createCircuitFlow() {
       blending: THREE.AdditiveBlending,
     });
 
-    const baseThickness = rand(0.2, 0.36);
+    const baseThickness = rand(0.08, 0.14);
     const segments: THREE.Mesh[] = [];
+    const joints: THREE.Mesh[] = [];
     for (let j = 1; j < pathPoints.length; j += 1) {
-      const segment = createWireSegment(pathPoints[j - 1], pathPoints[j], material, baseThickness);
+      const segment = createPipeSegment(pathPoints[j - 1], pathPoints[j], material, baseThickness);
       if (!segment) continue;
       group.add(segment);
       segments.push(segment);
+    }
+    for (let j = 1; j < pathPoints.length - 1; j += 1) {
+      const joint = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 14, 12),
+        material,
+      );
+      joint.position.copy(pathPoints[j]);
+      joint.scale.setScalar(baseThickness * 1.05);
+      group.add(joint);
+      joints.push(joint);
     }
 
     const pulses: PulseMarker[] = [];
@@ -272,6 +284,7 @@ function createCircuitFlow() {
     circuits.push({
       group,
       segments,
+      joints,
       material,
       baseColor,
       sampler,
@@ -338,11 +351,14 @@ function animate() {
       cameraToGroup.setFromMatrixPosition(circuit.group.matrixWorld);
       const distanceToCamera = camera.position.distanceTo(cameraToGroup);
       const proximity = THREE.MathUtils.clamp(1 - distanceToCamera / 250, 0, 1);
-      const thickness = circuit.baseThickness * (0.62 + proximity * 2.15);
+      const thickness = circuit.baseThickness * (0.86 + proximity * 0.95);
 
       for (const segment of circuit.segments) {
-        segment.scale.y = thickness;
+        segment.scale.x = thickness;
         segment.scale.z = thickness;
+      }
+      for (const joint of circuit.joints) {
+        joint.scale.setScalar(thickness * 1.08);
       }
       circuit.material.opacity = 0.15 + proximity * 0.7;
       circuit.material.color.copy(circuit.baseColor).lerp(colorNear, proximity * 0.75);
@@ -453,6 +469,9 @@ function disposeScene() {
   for (const circuit of circuits) {
     for (const segment of circuit.segments) {
       segment.geometry.dispose();
+    }
+    for (const joint of circuit.joints) {
+      joint.geometry.dispose();
     }
     circuit.material.dispose();
     for (const pulse of circuit.pulses) {
