@@ -35,7 +35,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="window comic-window">
+  <div v-if="SHOW_COMIC_ENGINE" class="window comic-window">
     <div class="title-bar">
       <div class="title-bar-text">LLM DOES NOT COMPUTE - promptexecution.com</div>
       <div class="title-bar-controls">
@@ -63,9 +63,6 @@ onMounted(() => {
           :day="selectedDay"
           @request-tab="activeTab = $event"
         />
-        <div v-if="!SHOW_COMIC_ENGINE && activeTab === 'archive'" class="comic-paused-banner">
-          Comic engine is temporarily hidden while the new background experience is being tuned.
-        </div>
         <ComicArchive v-if="activeTab === 'archive'" />
         <PushSubscribe v-if="activeTab === 'subscribe'" />
         <TheXTerm v-if="activeTab === 'cli'" />
@@ -78,6 +75,9 @@ onMounted(() => {
         </p>
       </div>
     </div>
+  </div>
+  <div v-else class="cli-only-container">
+    <TheXTerm />
   </div>
 </template>
 
@@ -171,14 +171,6 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.comic-paused-banner {
-  margin-bottom: 12px;
-  padding: 8px 10px;
-  border: 1px solid #7f9db9;
-  background: #f0f4ff;
-  font-size: 12px;
-}
-
 .status-bar {
   display: flex;
   gap: 2px;
@@ -194,6 +186,12 @@ onMounted(() => {
   margin: 0;
 }
 
+.cli-only-container {
+  max-width: 1400px;
+  margin: 12px auto 24px;
+  min-height: calc(100vh - 110px);
+}
+
 @media (max-width: 767px) {
   .comic-window {
     margin: 8px auto 16px;
@@ -207,6 +205,11 @@ onMounted(() => {
 
   .status-bar {
     flex-direction: column;
+  }
+
+  .cli-only-container {
+    margin: 8px auto 16px;
+    min-height: calc(100dvh - 64px);
   }
 }
 </style>
