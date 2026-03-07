@@ -188,14 +188,7 @@ onMounted(() => {
 
 .cli-only-container {
   max-width: 1400px;
-  margin: 12px auto 24px;
-  min-height: calc(100vh - 110px);
-  display: flex;
-  align-items: flex-end;
-}
-
-.cli-only-container > * {
-  width: 100%;
+  margin: 2px auto 24px;
 }
 
 @media (max-width: 767px) {
@@ -214,8 +207,7 @@ onMounted(() => {
   }
 
   .cli-only-container {
-    margin: 8px auto 16px;
-    min-height: calc(100dvh - 64px);
+    margin: 4px auto 16px;
   }
 }
 </style>

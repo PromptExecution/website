@@ -302,7 +302,8 @@ const commandStore = [
   padding: 4px;
   display: flex;
   flex: 1 1 auto;
-  min-height: clamp(420px, calc(100dvh - 260px), 960px);
+  height: clamp(420px, calc(100dvh - 260px), 960px);
+  width: 100%;
   box-sizing: border-box;
   overflow: hidden;
   box-shadow:
@@ -334,6 +335,7 @@ const commandStore = [
   text-align: left;
   width: 100%;
   height: 100%;
+  min-height: 100%;
 }
 
 :deep(.t-container) {
@@ -362,7 +364,7 @@ const commandStore = [
 
 @media (max-width: 767px) {
   .cli-container {
-    min-height: clamp(360px, calc(100dvh - 210px), 720px);
+    height: clamp(360px, calc(100dvh - 210px), 720px);
     padding: 3px;
   }
 
