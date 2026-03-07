@@ -18,6 +18,8 @@ interface PulseMarker {
   core: THREE.Mesh;
   aura: THREE.Mesh;
   phase: number;
+  flashRate: number;
+  flashPhase: number;
 }
 
 interface CircuitLine {
@@ -246,38 +248,46 @@ function createCircuitFlow() {
     }
 
     const pulses: PulseMarker[] = [];
-    const pulseCount = 2 + Math.floor(Math.random() * 2);
+    const pulseHeadCount = 1 + Math.floor(Math.random() * 3);
 
-    for (let j = 0; j < pulseCount; j += 1) {
-      const core = new THREE.Mesh(
-        new THREE.SphereGeometry(rand(0.2, 0.42), 14, 14),
-        new THREE.MeshBasicMaterial({
-          color: 0x8ff8ff,
-          transparent: true,
-          opacity: rand(0.55, 0.82),
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-        }),
-      );
+    for (let j = 0; j < pulseHeadCount; j += 1) {
+      const headPhase = j / pulseHeadCount + Math.random() * 0.18;
+      const sequenceCount = Math.random() < 0.5 ? Math.floor(rand(2, 9)) : 1;
+      const sequenceGap = rand(0.018, 0.05);
 
-      const aura = new THREE.Mesh(
-        new THREE.SphereGeometry(rand(0.55, 1.0), 14, 14),
-        new THREE.MeshBasicMaterial({
-          color: 0x34b6ff,
-          transparent: true,
-          opacity: rand(0.16, 0.3),
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-        }),
-      );
+      for (let k = 0; k < sequenceCount; k += 1) {
+        const core = new THREE.Mesh(
+          new THREE.SphereGeometry(rand(0.2, 0.42), 14, 14),
+          new THREE.MeshBasicMaterial({
+            color: 0x8ff8ff,
+            transparent: true,
+            opacity: rand(0.55, 0.82),
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+          }),
+        );
 
-      group.add(core);
-      group.add(aura);
-      pulses.push({
-        core,
-        aura,
-        phase: j / pulseCount + Math.random() * 0.12,
-      });
+        const aura = new THREE.Mesh(
+          new THREE.SphereGeometry(rand(0.55, 1.0), 14, 14),
+          new THREE.MeshBasicMaterial({
+            color: 0x34b6ff,
+            transparent: true,
+            opacity: rand(0.16, 0.3),
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+          }),
+        );
+
+        group.add(core);
+        group.add(aura);
+        pulses.push({
+          core,
+          aura,
+          phase: headPhase - k * sequenceGap,
+          flashRate: rand(5.2, 13.8),
+          flashPhase: rand(0, Math.PI * 2),
+        });
+      }
     }
 
     const depthOffset = rand(0, FLOW_DEPTH_SPAN);
@@ -369,9 +379,12 @@ function animate() {
       const linePulseSpeed = (PULSE_SPEED_BASE + flowSpeed * PULSE_SPEED_FLOW_GAIN) * circuit.speedFactor;
       for (const pulse of circuit.pulses) {
         let progress = (elapsed * linePulseSpeed + pulse.phase) % 1;
+        if (progress < 0) progress += 1;
         if (proximity > 0.58) {
           const jumpStep = THREE.MathUtils.lerp(0.028, 0.11, (proximity - 0.58) / 0.42);
           progress = Math.round(progress / jumpStep) * jumpStep;
+          if (progress < 0) progress += 1;
+          if (progress > 1) progress -= 1;
         }
         const flowT = Math.pow(progress, 0.82);
         const position = samplePath(circuit.sampler, flowT);
@@ -379,13 +392,14 @@ function animate() {
         pulse.aura.position.copy(position);
 
         const distanceFade = Math.max(0.06, 1 - flowT);
+        const flash = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(elapsed * pulse.flashRate + pulse.flashPhase));
         const pulseWave = 0.88 + Math.sin((elapsed + pulse.phase) * 9) * 0.12;
         const coreMaterial = pulse.core.material as THREE.MeshBasicMaterial;
         const auraMaterial = pulse.aura.material as THREE.MeshBasicMaterial;
-        coreMaterial.opacity = 0.08 + proximity * 0.42 + distanceFade * 0.46;
-        auraMaterial.opacity = 0.04 + proximity * 0.19 + distanceFade * 0.16;
-        pulse.core.scale.setScalar((0.76 + proximity * 0.36) * pulseWave);
-        pulse.aura.scale.setScalar((0.84 + proximity * 0.38) + pulseWave * 0.22);
+        coreMaterial.opacity = (0.08 + proximity * 0.42 + distanceFade * 0.46) * flash;
+        auraMaterial.opacity = (0.04 + proximity * 0.19 + distanceFade * 0.16) * flash;
+        pulse.core.scale.setScalar((0.72 + proximity * 0.34) * pulseWave * (0.85 + flash * 0.25));
+        pulse.aura.scale.setScalar((0.8 + proximity * 0.34) + pulseWave * 0.2 * (0.8 + flash * 0.35));
       }
     }
 
