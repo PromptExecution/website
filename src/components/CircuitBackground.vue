@@ -36,6 +36,7 @@ let scene: THREE.Scene | null = null;
 let camera: THREE.PerspectiveCamera | null = null;
 let renderer: THREE.WebGLRenderer | null = null;
 let animationId = 0;
+let centerHole: THREE.Mesh | null = null;
 let centerRing: THREE.Mesh | null = null;
 let centerHalo: THREE.Mesh | null = null;
 let legacyStars: THREE.Points | null = null;
@@ -55,6 +56,8 @@ const PULSE_SPEED_FLOW_GAIN = 0.0022;
 const SEGMENT_AXIS = new THREE.Vector3(1, 0, 0);
 const cameraToGroup = new THREE.Vector3();
 const colorNear = new THREE.Color(0xc8ffff);
+const focalPoint = new THREE.Vector3(0, 0, 0);
+const focalTarget = new THREE.Vector3(0, 0, 0);
 let flowTravel = 0;
 
 function rand(min: number, max: number) {
@@ -170,11 +173,11 @@ function createWireSegment(start: THREE.Vector3, end: THREE.Vector3, material: T
 function addCenterHole() {
   if (!scene) return;
 
-  const hole = new THREE.Mesh(
+  centerHole = new THREE.Mesh(
     new THREE.SphereGeometry(8, 48, 48),
     new THREE.MeshBasicMaterial({ color: 0x020206 }),
   );
-  scene.add(hole);
+  scene.add(centerHole);
 
   centerRing = new THREE.Mesh(
     new THREE.RingGeometry(9.2, 12.4, 80),
@@ -318,14 +321,18 @@ function animate() {
   flowTravel += delta * flowSpeed;
 
   pointerParallax.lerp(pointerTarget, 0.035);
+  focalTarget.set(pointerTarget.x * 30, pointerTarget.y * 18, 0);
+  focalPoint.lerp(focalTarget, 0.1);
   camera.position.x = pointerParallax.x * 2.4;
   camera.position.y = pointerParallax.y * 1.8;
   camera.position.z = 72;
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(focalPoint);
 
   if (BACKGROUND_MODE === 'circuit') {
     for (const circuit of circuits) {
       const wrappedDepth = (circuit.depthOffset + flowTravel * circuit.speedFactor) % FLOW_DEPTH_SPAN;
+      circuit.group.position.x = focalPoint.x;
+      circuit.group.position.y = focalPoint.y;
       circuit.group.position.z = wrappedDepth - FLOW_DEPTH_SPAN + FLOW_NEAR_LIMIT;
       circuit.group.updateMatrixWorld();
       cameraToGroup.setFromMatrixPosition(circuit.group.matrixWorld);
@@ -364,14 +371,19 @@ function animate() {
     }
 
     if (centerRing) {
+      centerRing.position.copy(focalPoint);
       centerRing.rotation.z += delta * 0.06;
       const ringMaterial = centerRing.material as THREE.MeshBasicMaterial;
       ringMaterial.opacity = 0.3 + Math.sin(elapsed * 1.4) * 0.08;
     }
     if (centerHalo) {
+      centerHalo.position.copy(focalPoint);
       const haloMaterial = centerHalo.material as THREE.MeshBasicMaterial;
       haloMaterial.opacity = 0.1 + Math.sin(elapsed * 1.1) * 0.04;
       centerHalo.scale.setScalar(0.98 + Math.sin(elapsed * 0.9) * 0.03);
+    }
+    if (centerHole) {
+      centerHole.position.copy(focalPoint);
     }
   } else if (legacyStars) {
     legacyStars.rotation.y += delta * 0.03;
@@ -467,6 +479,11 @@ function disposeScene() {
     centerHalo.geometry.dispose();
     (centerHalo.material as THREE.Material).dispose();
     centerHalo = null;
+  }
+  if (centerHole) {
+    centerHole.geometry.dispose();
+    (centerHole.material as THREE.Material).dispose();
+    centerHole = null;
   }
 
   if (scene) {
