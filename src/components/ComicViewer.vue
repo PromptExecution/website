@@ -318,7 +318,6 @@ function escapeXml(text: string) {
         <div class="variant">
           <div class="variant-header">
             <h3>Variant A</h3>
-            <span class="model-tag">{{ comic.variants.a.model.split('/').pop() }}</span>
           </div>
 
           <div class="image-container">
@@ -342,7 +341,6 @@ function escapeXml(text: string) {
         <div class="variant">
           <div class="variant-header">
             <h3>Variant B</h3>
-            <span class="model-tag">{{ comic.variants.b.model.split('/').pop() }}</span>
           </div>
 
           <div class="image-container">
@@ -396,9 +394,10 @@ function escapeXml(text: string) {
 }
 
 .comic-title {
-  font-size: 18px;
+  font-size: 16px;
   margin: 0 0 4px 0;
-  font-weight: bold;
+  font-weight: 600;
+  color: #3a3a3a;
 }
 
 .comic-date {
@@ -440,7 +439,7 @@ function escapeXml(text: string) {
 }
 
 .variant {
-  border: 2px solid #808080;
+  border: 1px solid #b7b7b7;
   padding: 12px;
   background: white;
   display: flex;
@@ -455,21 +454,15 @@ function escapeXml(text: string) {
 }
 
 .variant-header h3 {
-  font-size: 14px;
+  font-size: 12px;
   margin: 0;
-}
-
-.model-tag {
-  font-size: 11px;
-  background: #000080;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 2px;
+  color: #555;
+  font-weight: 600;
 }
 
 .image-container {
   background: white;
-  border: 1px solid #ccc;
+  border: 1px solid #d6d6d6;
   margin-bottom: 12px;
   text-align: center;
   min-height: clamp(220px, 32vw, 360px);
@@ -527,20 +520,17 @@ function escapeXml(text: string) {
 }
 
 .vote-btn {
-  padding: 8px 24px;
-  border: 2px outset #dfdfdf;
-  background: #c0c0c0;
+  padding: 6px 14px;
+  border: 1px solid #b0b0b0;
+  background: #f6f6f6;
   cursor: pointer;
-  font-weight: bold;
-  font-size: 13px;
+  font-weight: 600;
+  font-size: 12px;
+  color: #444;
 }
 
 .vote-btn:hover:not(:disabled) {
-  background: #e0e0e0;
-}
-
-.vote-btn:active:not(:disabled) {
-  border-style: inset;
+  background: #ececec;
 }
 
 .vote-btn:disabled {
@@ -549,8 +539,8 @@ function escapeXml(text: string) {
 }
 
 .vote-btn.selected {
-  background: #000080;
-  color: white;
+  background: #444;
+  color: #fff;
 }
 
 .vote-count {
@@ -561,17 +551,18 @@ function escapeXml(text: string) {
 
 .thank-you {
   background: #ffffcc;
-  border: 2px solid #808080;
+  border: 1px solid #b8b8b8;
   padding: 12px;
   margin-bottom: 16px;
   text-align: center;
 }
 
 .instructions {
-  background: #f0f0f0;
-  border: 2px inset #dfdfdf;
+  background: #f7f7f7;
+  border: 1px solid #dedede;
   padding: 12px;
   font-size: 12px;
+  color: #666;
 }
 
 .instructions p {

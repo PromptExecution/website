@@ -6,6 +6,7 @@ export interface ComicPanel {
   dialogue?: string;
   robotThought?: string;
   action?: string;
+  pose?: string;
 }
 
 export interface ComicScript {
@@ -60,6 +61,7 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
     'You are the head writer for "LLM DOES NOT COMPUTE", a dry, technically accurate webcomic.',
     'Return only JSON.',
     'The comic must be funny because the dialogue is sharp and specific, not because the characters explain the joke.',
+    'Keep language sparse and punchy. No rambling setup.',
     'Avoid generic AI hype language, vague corporate filler, and repeated punchlines.',
     'Each panel should move the joke forward.',
     'The final panel must land a deadpan punchline or brutal correction.',
@@ -79,11 +81,13 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
     'Rules:',
     '- Include the User and the Robot somewhere in the strip.',
     '- At least one panel must contain the robot internal monologue in `robotThought`.',
-    '- Keep every dialogue line under 110 characters.',
-    '- Keep every robotThought block under 4 short lines.',
+    '- Keep every dialogue line short: target 4-10 words and never more than 65 characters.',
+    '- Keep every robotThought block under 3 short lines.',
+    '- Avoid verbose panel narration. `action` should be 2-6 words only (pose note, not a sentence).',
     '- Ferris is usually a silent cameo, not the main speaker.',
     '- Return valid JSON with keys: title, panels.',
-    '- panels must be an array of objects using: panelNumber, speaker, dialogue?, robotThought?, action?.',
+    '- panels must be an array of objects using: panelNumber, speaker, dialogue?, robotThought?, action?, pose?.',
+    '- pose should be one of: neutral, leaning, pointing, facepalm, slumped, hands_up, typing, smug, uncertain, deadpan.',
     '- speaker must be one of: user, robot, simon, boss, ferris.',
     '- Do not wrap the JSON in markdown.',
   ].join('\n');
@@ -116,6 +120,7 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
                 dialogue: { type: 'string' },
                 robotThought: { type: 'string' },
                 action: { type: 'string' },
+                pose: { type: 'string' },
               },
               required: ['panelNumber', 'speaker'],
               additionalProperties: false,
@@ -162,9 +167,10 @@ function normalizeComicScript(raw: any, options: GenerateComicScriptOptions): Co
   for (let index = 0; index < options.panelCount; index += 1) {
     const panel = panels[index] || {};
     const speaker = normalizeSpeaker(panel.speaker, options.cast);
-    const dialogue = sanitizeLine(panel.dialogue);
+    const dialogue = sanitizeLine(panel.dialogue, 65);
     const robotThought = sanitizeThought(panel.robotThought);
-    const action = sanitizeLine(panel.action, 140);
+    const action = sanitizeAction(panel.action);
+    const pose = sanitizePose(panel.pose, panel.action, speaker);
 
     normalizedPanels.push({
       panelNumber: index + 1,
@@ -172,20 +178,21 @@ function normalizeComicScript(raw: any, options: GenerateComicScriptOptions): Co
       dialogue,
       robotThought,
       action,
+      pose,
     });
   }
 
   if (!normalizedPanels.some((panel) => panel.robotThought)) {
     const robotPanel = normalizedPanels.find((panel) => panel.speaker === 'robot') || normalizedPanels[1] || normalizedPanels[0];
     robotPanel.speaker = 'robot';
-    robotPanel.robotThought = '> parsing punchline\n> confidence: 0.61\n> this seems survivable';
+    robotPanel.robotThought = '> parsing punchline\n> confidence: 0.61\n> ship it anyway';
   }
 
   if (!normalizedPanels.some((panel) => panel.dialogue)) {
     normalizedPanels[0].speaker = 'user';
-    normalizedPanels[0].dialogue = 'Did the deploy fix production?';
+    normalizedPanels[0].dialogue = 'Did prod recover?';
     normalizedPanels[normalizedPanels.length - 1].speaker = 'simon';
-    normalizedPanels[normalizedPanels.length - 1].dialogue = 'It fixed the graph. Production remained theoretical.';
+    normalizedPanels[normalizedPanels.length - 1].dialogue = 'Graphs recovered. Production did not.';
   }
 
   return {
@@ -209,7 +216,7 @@ function normalizeSpeaker(input: unknown, cast: CastCharacter[]): string {
   return 'user';
 }
 
-function sanitizeLine(input: unknown, maxLength = 110): string | undefined {
+function sanitizeLine(input: unknown, maxLength = 65): string | undefined {
   if (typeof input !== 'string') return undefined;
   const clean = input.replace(/\s+/g, ' ').trim();
   if (!clean) return undefined;
@@ -222,12 +229,47 @@ function sanitizeThought(input: unknown): string | undefined {
     .split('\n')
     .map((line) => line.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
-    .slice(0, 4)
+    .slice(0, 3)
     .map((line) => (line.startsWith('>') ? line : `> ${line}`))
-    .map((line) => line.slice(0, 48));
+    .map((line) => line.slice(0, 34));
 
   if (lines.length === 0) return undefined;
   return lines.join('\n');
+}
+
+function sanitizeAction(input: unknown): string | undefined {
+  const clean = sanitizeLine(input, 46);
+  if (!clean) return undefined;
+  const words = clean.split(' ').filter(Boolean);
+  if (words.length > 8) return undefined;
+  return clean;
+}
+
+function sanitizePose(input: unknown, action: unknown, speaker: string): string | undefined {
+  const allowed = new Set([
+    'neutral',
+    'leaning',
+    'pointing',
+    'facepalm',
+    'slumped',
+    'hands_up',
+    'typing',
+    'smug',
+    'uncertain',
+    'deadpan',
+  ]);
+  const raw = String(input || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (allowed.has(raw)) return raw;
+
+  const hint = String(action || '').toLowerCase();
+  if (/\btype|typing|keyboard|terminal|laptop|screen\b/.test(hint)) return 'typing';
+  if (/\bpoint|pointing\b/.test(hint)) return 'pointing';
+  if (/\bfacepalm\b/.test(hint)) return 'facepalm';
+  if (/\bslump|slouched|deflated\b/.test(hint)) return 'slumped';
+  if (/\bhands up|arms up|panic\b/.test(hint)) return 'hands_up';
+  if (speaker === 'simon') return 'deadpan';
+  if (speaker === 'robot') return 'uncertain';
+  return 'neutral';
 }
 
 function buildFallbackComicScript(options: GenerateComicScriptOptions, error: string): ComicScript {
@@ -235,17 +277,18 @@ function buildFallbackComicScript(options: GenerateComicScriptOptions, error: st
   const closer = castIds.has('simon') ? 'simon' : 'boss';
 
   const fallbackPanels: ComicPanel[] = [
-    { panelNumber: 1, speaker: 'user', dialogue: `Can we rebuild ${options.topic}?` },
-    { panelNumber: 2, speaker: 'robot', robotThought: '> rewriting premise\n> preserving punchline\n> no rasterized text' },
-    { panelNumber: 3, speaker: 'robot', dialogue: 'Yes. This time the words are actual words.' },
-    { panelNumber: 4, speaker: closer, dialogue: 'A low bar, but finally a measurable one.' },
+    { panelNumber: 1, speaker: 'user', dialogue: `Can we rebuild ${options.topic}?`, pose: 'pointing' },
+    { panelNumber: 2, speaker: 'robot', robotThought: '> rewriting premise\n> preserving punchline\n> no gibberish', pose: 'typing' },
+    { panelNumber: 3, speaker: 'robot', dialogue: 'Yes. Words are readable now.', pose: 'smug' },
+    { panelNumber: 4, speaker: closer, dialogue: 'Low bar. Still progress.', pose: 'deadpan' },
   ].slice(0, options.panelCount);
 
   while (fallbackPanels.length < options.panelCount) {
     fallbackPanels.splice(fallbackPanels.length - 1, 0, {
       panelNumber: fallbackPanels.length,
       speaker: 'user',
-      dialogue: 'So we stopped asking image models to typeset jokes?',
+      dialogue: 'So we stopped asking image models to typeset?',
+      pose: 'leaning',
     });
   }
 

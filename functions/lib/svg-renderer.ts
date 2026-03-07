@@ -71,14 +71,14 @@ export function renderComicToSVG(script: ComicScript): string {
     <style>
       .comic-text {
         font-family: 'Chalkboard SE', 'Comic Sans MS', 'Marker Felt', 'Trebuchet MS', sans-serif;
-        font-size: 14px;
+        font-size: 13px;
         fill: #111;
       }
       .title-text {
         font-family: 'Chalkboard SE', 'Comic Sans MS', 'Marker Felt', 'Trebuchet MS', sans-serif;
-        font-size: 22px;
-        font-weight: 700;
-        fill: #111;
+        font-size: 16px;
+        font-weight: 600;
+        fill: #444;
       }
       .caption-text {
         font-family: 'Trebuchet MS', 'Verdana', sans-serif;
@@ -125,8 +125,9 @@ function renderPanel(
     borderRng,
     {
       fill: 'white',
-      width: 2.45,
-      opacity: 0.98,
+      stroke: '#4a4a4a',
+      width: 1.55,
+      opacity: 0.74,
       doubleStroke: true,
     },
     `url(#panel-wobble-${panel.panelNumber})`,
@@ -137,63 +138,59 @@ function renderPanel(
   ${border}
 `;
 
-  if (panel.action) {
-    const actionLines = wrapText(panel.action, 34).slice(0, 2);
-    content += actionLines.map((line, index) => (
-      `<text x="${fmt(x + 14)}" y="${fmt(y + 18 + index * 13)}" class="caption-text">${escapeXml(line)}</text>`
-    )).join('');
-  }
-
   const scene = detectScene(panel);
+  const pose = normalizePose(panel.pose);
   const figureX = x + width / 2;
-  const figureY = y + height - (scene === 'terminal' ? 112 : 108);
+  const figureY = y + height - (scene === 'terminal' ? 90 : 84);
 
   if (scene === 'terminal') {
-    content += drawTerminalScene(x + 26, y + height - 104, width - 52, panelSeed);
+    content += drawTerminalScene(x + 30, y + height - 106, width - 60, panelSeed);
   }
 
   if (panel.dialogue) {
-    content += drawSpeechBubble(x + width / 2, y + 26, panel.dialogue, width - 36, panelSeed);
+    const bubbleX = getBubbleX(panel, x, width, panelSeed);
+    content += drawSpeechBubble(bubbleX, y + 20, panel.dialogue, width * 0.56, panelSeed);
   }
 
   if (panel.robotThought) {
-    const thoughtY = panel.dialogue ? y + 86 : y + 28;
-    content += drawThoughtBubble(x + width / 2, thoughtY, panel.robotThought, width - 36, panelSeed);
+    const thoughtY = panel.dialogue ? y + 70 : y + 20;
+    const thoughtX = getThoughtBubbleX(panel, x, width, panelSeed);
+    content += drawThoughtBubble(thoughtX, thoughtY, panel.robotThought, width * 0.54, panelSeed);
   }
 
   if (panel.speaker === 'robot') {
-    content += drawRobotFigure(figureX, figureY - 30, panel, script.day);
+    content += drawRobotFigure(figureX, figureY - 24, panel, script.day, pose);
   } else if (panel.speaker === 'simon') {
-    content += drawSimonFigure(figureX, figureY - 30, panel, script.day);
+    content += drawSimonFigure(figureX, figureY - 24, panel, script.day, pose);
   } else if (panel.speaker === 'boss') {
-    content += drawBossFigure(figureX, figureY - 30, panel, script.day);
+    content += drawBossFigure(figureX, figureY - 24, panel, script.day, pose);
   } else if (panel.speaker === 'ferris') {
     content += drawFerrisFigure(figureX, figureY + 10, panel, script.day);
   } else {
-    content += drawHumanFigure(figureX, figureY - 30, panel, script.day);
+    content += drawHumanFigure(figureX, figureY - 24, panel, script.day, pose);
   }
 
   return content;
 }
 
-function drawHumanFigure(x: number, y: number, panel: ComicPanel, day: string): string {
+function drawHumanFigure(x: number, y: number, panel: ComicPanel, day: string, pose: string): string {
   const ctx = createCharacterContext('user', panel, day);
-  const pose = buildStandingPose(x, y, ctx, 0.9);
-  return `<g filter="url(#${ctx.filterId})">${drawHumanLikeFigure(ctx, pose)}</g>`;
+  const skeleton = buildStandingPose(x, y, ctx, 0.9, 1.28, pose);
+  return `<g filter="url(#${ctx.filterId})">${drawHumanLikeFigure(ctx, skeleton)}</g>`;
 }
 
-function drawSimonFigure(x: number, y: number, panel: ComicPanel, day: string): string {
+function drawSimonFigure(x: number, y: number, panel: ComicPanel, day: string, pose: string): string {
   const ctx = createCharacterContext('simon', panel, day);
-  const pose = buildStandingPose(x - 2, y - 1, ctx, 0.72);
+  const skeleton = buildStandingPose(x - 2, y - 1, ctx, 0.72, 1.22, pose === 'neutral' ? 'deadpan' : pose);
   let content = `<g filter="url(#${ctx.filterId})">`;
-  content += drawHumanLikeFigure(ctx, pose);
+  content += drawHumanLikeFigure(ctx, skeleton);
 
   const hatRng = createRng(hashString(`simon-hat|${day}|${panel.panelNumber}`));
-  const brimY = pose.headCenter.y - 16;
+  const brimY = skeleton.headCenter.y - 16;
   content += renderOpenSketch(
     roughLinePoints(
-      { x: pose.headCenter.x - 24, y: brimY + jitter(hatRng, 0.6) },
-      { x: pose.headCenter.x + 26, y: brimY + jitter(hatRng, 0.8) },
+      { x: skeleton.headCenter.x - 24, y: brimY + jitter(hatRng, 0.6) },
+      { x: skeleton.headCenter.x + 26, y: brimY + jitter(hatRng, 0.8) },
       hatRng,
       ctx.controls,
       4,
@@ -204,10 +201,10 @@ function drawSimonFigure(x: number, y: number, panel: ComicPanel, day: string): 
   );
   content += renderClosedSketch(
     roughPolygonPoints([
-      { x: pose.headCenter.x - 15, y: brimY - 1 },
-      { x: pose.headCenter.x - 9, y: brimY - 13 },
-      { x: pose.headCenter.x + 7, y: brimY - 15 },
-      { x: pose.headCenter.x + 15, y: brimY - 2 },
+      { x: skeleton.headCenter.x - 15, y: brimY - 1 },
+      { x: skeleton.headCenter.x - 9, y: brimY - 13 },
+      { x: skeleton.headCenter.x + 7, y: brimY - 15 },
+      { x: skeleton.headCenter.x + 15, y: brimY - 2 },
     ], hatRng, 1.3),
     hatRng,
     { fill: 'white', width: 2.0, opacity: 0.97 },
@@ -215,8 +212,8 @@ function drawSimonFigure(x: number, y: number, panel: ComicPanel, day: string): 
 
   const beardRng = createRng(hashString(`simon-beard|${day}|${panel.panelNumber}`));
   for (let index = 0; index < 3; index += 1) {
-    const start = { x: pose.headCenter.x - 3 + index * 3, y: pose.headCenter.y + 11 + jitter(beardRng, 0.8) };
-    const end = { x: start.x + jitter(beardRng, 1.2), y: pose.headCenter.y + 18 + jitter(beardRng, 1.1) };
+    const start = { x: skeleton.headCenter.x - 3 + index * 3, y: skeleton.headCenter.y + 11 + jitter(beardRng, 0.8) };
+    const end = { x: start.x + jitter(beardRng, 1.2), y: skeleton.headCenter.y + 18 + jitter(beardRng, 1.1) };
     content += renderOpenSketch(
       roughLinePoints(start, end, beardRng, ctx.controls, 3, 0.03),
       beardRng,
@@ -228,19 +225,19 @@ function drawSimonFigure(x: number, y: number, panel: ComicPanel, day: string): 
   return content;
 }
 
-function drawBossFigure(x: number, y: number, panel: ComicPanel, day: string): string {
+function drawBossFigure(x: number, y: number, panel: ComicPanel, day: string, pose: string): string {
   const ctx = createCharacterContext('boss', panel, day);
-  const pose = buildStandingPose(x + 2, y, ctx, 1.15);
+  const skeleton = buildStandingPose(x + 2, y, ctx, 1.15, 1.25, poseFromBoss(pose));
   let content = `<g filter="url(#${ctx.filterId})">`;
-  content += drawHumanLikeFigure(ctx, pose);
+  content += drawHumanLikeFigure(ctx, skeleton);
 
   const tieRng = createRng(hashString(`boss-tie|${day}|${panel.panelNumber}`));
   content += renderClosedSketch(
     roughPolygonPoints([
-      { x: pose.torsoTop.x - 3, y: pose.torsoTop.y + 4 },
-      { x: pose.torsoTop.x + 4, y: pose.torsoTop.y + 5 },
-      { x: pose.torsoTop.x + 1, y: pose.torsoTop.y + 20 },
-      { x: pose.torsoTop.x - 5, y: pose.torsoTop.y + 19 },
+      { x: skeleton.torsoTop.x - 3, y: skeleton.torsoTop.y + 4 },
+      { x: skeleton.torsoTop.x + 4, y: skeleton.torsoTop.y + 5 },
+      { x: skeleton.torsoTop.x + 1, y: skeleton.torsoTop.y + 20 },
+      { x: skeleton.torsoTop.x - 5, y: skeleton.torsoTop.y + 19 },
     ], tieRng, 0.9),
     tieRng,
     { fill: 'white', width: 1.55, opacity: 0.92, doubleStroke: false },
@@ -248,8 +245,8 @@ function drawBossFigure(x: number, y: number, panel: ComicPanel, day: string): s
 
   content += renderOpenSketch(
     roughLinePoints(
-      { x: pose.torsoTop.x - 1, y: pose.torsoTop.y + 4 },
-      { x: pose.torsoTop.x - 4, y: pose.torsoTop.y + 14 },
+      { x: skeleton.torsoTop.x - 1, y: skeleton.torsoTop.y + 4 },
+      { x: skeleton.torsoTop.x - 4, y: skeleton.torsoTop.y + 14 },
       tieRng,
       ctx.controls,
       3,
@@ -260,8 +257,8 @@ function drawBossFigure(x: number, y: number, panel: ComicPanel, day: string): s
   );
   content += renderOpenSketch(
     roughLinePoints(
-      { x: pose.torsoTop.x + 2, y: pose.torsoTop.y + 4 },
-      { x: pose.torsoTop.x + 1, y: pose.torsoTop.y + 14 },
+      { x: skeleton.torsoTop.x + 2, y: skeleton.torsoTop.y + 4 },
+      { x: skeleton.torsoTop.x + 1, y: skeleton.torsoTop.y + 14 },
       tieRng,
       ctx.controls,
       3,
@@ -275,21 +272,22 @@ function drawBossFigure(x: number, y: number, panel: ComicPanel, day: string): s
   return content;
 }
 
-function drawRobotFigure(x: number, y: number, panel: ComicPanel, day: string): string {
+function drawRobotFigure(x: number, y: number, panel: ComicPanel, day: string, pose: string): string {
   const ctx = createCharacterContext('robot', panel, day);
   const rng = ctx.frameRng;
-  const lean = jitter(ctx.identityRng, 1.6);
+  const leanBase = pose === 'smug' ? 2.8 : pose === 'uncertain' ? -1.8 : pose === 'typing' ? 3.6 : 0.8;
+  const lean = leanBase + jitter(ctx.identityRng, 1.7);
   const headX = x + lean;
-  const headY = y + jitter(rng, 0.8);
-  const headWidth = 25 + jitter(ctx.identityRng, 1.4);
-  const headHeight = 24 + jitter(ctx.identityRng, 1.2);
+  const headY = y + jitter(rng, 0.8) + (pose === 'typing' ? 3 : 0);
+  const headWidth = 32 + jitter(ctx.identityRng, 1.4);
+  const headHeight = 30 + jitter(ctx.identityRng, 1.2);
   const neck = { x: headX + jitter(rng, 0.3), y: headY + headHeight * 0.5 };
-  const hip = { x: x + lean * 0.45, y: y + 50 };
-  const shoulder = { x: x + lean * 0.35, y: y + 30 };
-  const leftHand = { x: x - 20 + jitter(rng, 1.4), y: y + 49 + jitter(rng, 1.2) };
-  const rightHand = { x: x + 20 + jitter(rng, 1.1), y: y + 48 + jitter(rng, 1.0) };
-  const leftFoot = { x: x - 15 + jitter(rng, 1.4), y: y + 80 + jitter(rng, 1.0) };
-  const rightFoot = { x: x + 16 + jitter(rng, 1.2), y: y + 80 + jitter(rng, 1.0) };
+  const hip = { x: x + lean * 0.45, y: y + 68 };
+  const shoulder = { x: x + lean * 0.35, y: y + 42 };
+  const leftHand = { x: x - 24 + jitter(rng, 1.4), y: y + 67 + (pose === 'typing' ? 8 : 0) + jitter(rng, 1.2) };
+  const rightHand = { x: x + 24 + jitter(rng, 1.1), y: y + 66 + (pose === 'typing' ? 5 : 0) + jitter(rng, 1.0) };
+  const leftFoot = { x: x - 18 + jitter(rng, 1.4), y: y + 108 + jitter(rng, 1.0) };
+  const rightFoot = { x: x + 18 + jitter(rng, 1.2), y: y + 108 + jitter(rng, 1.0) };
 
   let content = `<g filter="url(#${ctx.filterId})">`;
   content += renderOpenSketch(
@@ -315,19 +313,19 @@ function drawRobotFigure(x: number, y: number, panel: ComicPanel, day: string): 
     { fill: 'white', width: 2.3, opacity: 0.98 },
   );
   content += renderClosedSketch(
-    roughLoopPoints(headX - 5.4, headY - 2, 1.9, 2.3, rng, ctx.controls, { pointCount: 8 }),
+    roughLoopPoints(headX - 6.4, headY - 2, 2.1, 2.3, rng, ctx.controls, { pointCount: 8 }),
     rng,
     { fill: 'black', width: 1.0, opacity: 0.95, doubleStroke: false },
   );
   content += renderClosedSketch(
-    roughLoopPoints(headX + 5.3, headY - 1.8, 2.0, 2.1, rng, ctx.controls, { pointCount: 8 }),
+    roughLoopPoints(headX + 6.2, headY - 1.8, 2.1, 2.1, rng, ctx.controls, { pointCount: 8 }),
     rng,
     { fill: 'black', width: 1.0, opacity: 0.95, doubleStroke: false },
   );
   content += renderOpenSketch(
     roughLinePoints(
-      { x: headX - 6.6, y: headY + 6 },
-      { x: headX + 6.2, y: headY + 6.5 + jitter(rng, 0.4) },
+      { x: headX - 8.3, y: headY + 8.6 },
+      { x: headX + 8.1, y: headY + 9.1 + jitter(rng, 0.4) },
       rng,
       ctx.controls,
       4,
@@ -396,25 +394,25 @@ function drawHumanLikeFigure(ctx: CharacterContext, pose: ReturnType<typeof buil
     roughLoopPoints(
       pose.headCenter.x,
       pose.headCenter.y,
-      15 * pose.headScaleX,
-      15 * pose.headScaleY,
+      17.2 * pose.headScaleX * pose.scale,
+      17.2 * pose.headScaleY * pose.scale,
       rng,
       ctx.controls,
       { pointCount: 11, asymmetry: pose.headAsymmetry, radialVariance: 0.11 },
     ),
     rng,
-    { fill: 'white', width: 2.3, opacity: 0.98 },
+    { fill: 'white', width: 2.7, opacity: 0.99 },
   );
-  content += renderOpenSketch(roughLinePoints(pose.torsoTop, pose.hip, rng, ctx.controls, 4, 0.1), rng, { width: 2.25, opacity: 0.97 });
-  content += renderOpenSketch(roughLinePoints(pose.shoulder, pose.leftHand, rng, ctx.controls, 4, 0.1), rng, { width: 2.1, opacity: 0.96 });
-  content += renderOpenSketch(roughLinePoints(pose.shoulder, pose.rightHand, rng, ctx.controls, 4, 0.1), rng, { width: 2.05, opacity: 0.96 });
-  content += renderOpenSketch(roughLinePoints(pose.hip, pose.leftFoot, rng, ctx.controls, 4, 0.09), rng, { width: 2.15, opacity: 0.98 });
-  content += renderOpenSketch(roughLinePoints(pose.hip, pose.rightFoot, rng, ctx.controls, 4, 0.09), rng, { width: 2.15, opacity: 0.98 });
+  content += renderOpenSketch(roughLinePoints(pose.torsoTop, pose.hip, rng, ctx.controls, 4, 0.1), rng, { width: 2.6, opacity: 0.98 });
+  content += renderOpenSketch(roughLinePoints(pose.shoulder, pose.leftHand, rng, ctx.controls, 4, 0.1), rng, { width: 2.45, opacity: 0.97 });
+  content += renderOpenSketch(roughLinePoints(pose.shoulder, pose.rightHand, rng, ctx.controls, 4, 0.1), rng, { width: 2.45, opacity: 0.97 });
+  content += renderOpenSketch(roughLinePoints(pose.hip, pose.leftFoot, rng, ctx.controls, 4, 0.09), rng, { width: 2.52, opacity: 0.98 });
+  content += renderOpenSketch(roughLinePoints(pose.hip, pose.rightFoot, rng, ctx.controls, 4, 0.09), rng, { width: 2.52, opacity: 0.98 });
 
   return content;
 }
 
-function buildStandingPose(x: number, y: number, ctx: CharacterContext, leanMultiplier: number) {
+function buildStandingPose(x: number, y: number, ctx: CharacterContext, leanMultiplier: number, scale: number, pose: string) {
   const id = ctx.identityRng;
   const frame = ctx.frameRng;
   const limbDrift = ctx.controls.limbAngleVariance * 0.4;
@@ -431,13 +429,15 @@ function buildStandingPose(x: number, y: number, ctx: CharacterContext, leanMult
   const hipDrift = randBetween(frame, -1.0, 1.0);
 
   const headCenter = { x: x + randBetween(frame, -0.8, 0.8), y: y + randBetween(frame, -0.8, 0.9) };
-  const torsoTop = { x: headCenter.x + randBetween(frame, -0.4, 0.4), y: headCenter.y + 15 };
-  const shoulder = { x: headCenter.x + torsoLean * 0.15, y: headCenter.y + 30 + shoulderTilt * 0.1 };
-  const hip = { x: headCenter.x + torsoLean + hipDrift, y: headCenter.y + 51 };
-  const leftHand = { x: shoulder.x - armSpread + randBetween(frame, -limbDrift, limbDrift), y: shoulder.y + leftArmDrop };
-  const rightHand = { x: shoulder.x + armSpread + randBetween(frame, -limbDrift, limbDrift), y: shoulder.y + rightArmDrop };
-  const leftFoot = { x: hip.x - leftLegSpread + randBetween(frame, -limbDrift * 0.7, limbDrift * 0.7), y: hip.y + 30 + randBetween(frame, -1.0, 1.4) };
-  const rightFoot = { x: hip.x + rightLegSpread + randBetween(frame, -limbDrift * 0.7, limbDrift * 0.7), y: hip.y + 30 + randBetween(frame, -1.2, 1.2) };
+  const torsoTop = { x: headCenter.x + randBetween(frame, -0.4, 0.4), y: headCenter.y + 18 * scale };
+  const shoulder = { x: headCenter.x + torsoLean * 0.15, y: headCenter.y + 36 * scale + shoulderTilt * 0.1 };
+  const hip = { x: headCenter.x + torsoLean + hipDrift, y: headCenter.y + 64 * scale };
+  const leftHand = { x: shoulder.x - armSpread * scale + randBetween(frame, -limbDrift, limbDrift), y: shoulder.y + leftArmDrop * scale };
+  const rightHand = { x: shoulder.x + armSpread * scale + randBetween(frame, -limbDrift, limbDrift), y: shoulder.y + rightArmDrop * scale };
+  const leftFoot = { x: hip.x - leftLegSpread * scale + randBetween(frame, -limbDrift * 0.7, limbDrift * 0.7), y: hip.y + 34 * scale + randBetween(frame, -1.0, 1.4) };
+  const rightFoot = { x: hip.x + rightLegSpread * scale + randBetween(frame, -limbDrift * 0.7, limbDrift * 0.7), y: hip.y + 34 * scale + randBetween(frame, -1.2, 1.2) };
+
+  applyPoseToSkeleton(pose, headCenter, shoulder, hip, leftHand, rightHand, leftFoot, rightFoot, scale);
 
   return {
     headCenter,
@@ -451,13 +451,102 @@ function buildStandingPose(x: number, y: number, ctx: CharacterContext, leanMult
     headScaleX,
     headScaleY,
     headAsymmetry,
+    scale,
   };
 }
 
+function applyPoseToSkeleton(
+  pose: string,
+  headCenter: Point,
+  shoulder: Point,
+  hip: Point,
+  leftHand: Point,
+  rightHand: Point,
+  leftFoot: Point,
+  rightFoot: Point,
+  scale: number,
+): void {
+  if (pose === 'leaning') {
+    headCenter.x += 4 * scale;
+    shoulder.x += 6 * scale;
+    hip.x += 5 * scale;
+  } else if (pose === 'pointing') {
+    rightHand.x += 14 * scale;
+    rightHand.y -= 9 * scale;
+    leftHand.y += 5 * scale;
+  } else if (pose === 'facepalm') {
+    rightHand.x = headCenter.x + 4 * scale;
+    rightHand.y = headCenter.y + 5 * scale;
+    leftHand.y += 7 * scale;
+  } else if (pose === 'slumped') {
+    headCenter.y += 5 * scale;
+    shoulder.y += 6 * scale;
+    hip.y += 8 * scale;
+    leftHand.y += 10 * scale;
+    rightHand.y += 10 * scale;
+  } else if (pose === 'hands_up') {
+    leftHand.y -= 19 * scale;
+    rightHand.y -= 19 * scale;
+  } else if (pose === 'typing') {
+    headCenter.x += 5 * scale;
+    shoulder.x += 5 * scale;
+    leftHand.y += 9 * scale;
+    rightHand.y += 8 * scale;
+    leftHand.x += 5 * scale;
+    rightHand.x -= 3 * scale;
+  } else if (pose === 'smug') {
+    headCenter.y -= 3 * scale;
+    shoulder.x -= 3 * scale;
+  } else if (pose === 'uncertain') {
+    rightHand.y -= 10 * scale;
+    rightHand.x -= 4 * scale;
+  } else if (pose === 'deadpan') {
+    leftHand.x += 7 * scale;
+    rightHand.x -= 7 * scale;
+    leftHand.y += 7 * scale;
+    rightHand.y += 7 * scale;
+  }
+
+  leftFoot.x -= 1.8 * scale;
+  rightFoot.x += 1.8 * scale;
+}
+
+function normalizePose(pose: unknown): string {
+  const value = String(pose || 'neutral').toLowerCase().replace(/[\s-]+/g, '_');
+  const allowed = new Set(['neutral', 'leaning', 'pointing', 'facepalm', 'slumped', 'hands_up', 'typing', 'smug', 'uncertain', 'deadpan']);
+  return allowed.has(value) ? value : 'neutral';
+}
+
+function poseFromBoss(pose: string): string {
+  if (pose === 'deadpan' || pose === 'typing' || pose === 'pointing') return pose;
+  if (pose === 'neutral') return 'smug';
+  return pose;
+}
+
+function getBubbleX(panel: ComicPanel, panelX: number, panelWidth: number, panelSeed: number): number {
+  const rng = createRng(hashString(`bubble-x|${panelSeed}`));
+  const base = panelX + panelWidth / 2;
+  const left = panelX + panelWidth * 0.33;
+  const right = panelX + panelWidth * 0.67;
+  if (panel.speaker === 'simon') return left + jitter(rng, 4);
+  if (panel.speaker === 'boss') return right + jitter(rng, 4);
+  if (panel.speaker === 'robot') return right + jitter(rng, 4);
+  return base + jitter(rng, 9);
+}
+
+function getThoughtBubbleX(panel: ComicPanel, panelX: number, panelWidth: number, panelSeed: number): number {
+  const rng = createRng(hashString(`thought-x|${panelSeed}`));
+  const left = panelX + panelWidth * 0.3;
+  const right = panelX + panelWidth * 0.69;
+  if (panel.speaker === 'robot') return left + jitter(rng, 5);
+  return right + jitter(rng, 5);
+}
+
 function drawSpeechBubble(x: number, y: number, text: string, maxWidth: number, seed: number): string {
-  const lines = wrapText(text, 28).slice(0, 4);
-  const bubbleHeight = lines.length * 16 + 22;
-  const bubbleWidth = Math.min(maxWidth, Math.max(156, longestLine(lines) * 7.2 + 34));
+  const lines = wrapText(text, 20).slice(0, 2);
+  const bubbleHeight = lines.length * 14 + 16;
+  const maxByArea = Math.max(95, (PANEL_WIDTH * PANEL_HEIGHT * 0.22) / bubbleHeight);
+  const bubbleWidth = Math.min(maxWidth, maxByArea, Math.max(96, longestLine(lines) * 6.8 + 22));
   const rng = createRng(hashString(`speech|${seed}|${text}`));
   const outline = roughLoopPoints(x, y + bubbleHeight / 2, bubbleWidth / 2, bubbleHeight / 2, rng, SKETCH_CONTROLS, {
     pointCount: 14,
@@ -465,39 +554,40 @@ function drawSpeechBubble(x: number, y: number, text: string, maxWidth: number, 
     radialVariance: 0.12,
   });
   const tail = roughPolygonPoints([
-    { x: x - 10 + jitter(rng, 1.1), y: y + bubbleHeight - 4 },
-    { x: x - 2 + jitter(rng, 0.8), y: y + bubbleHeight + 11 + jitter(rng, 0.8) },
-    { x: x + 7 + jitter(rng, 1.0), y: y + bubbleHeight - 1 },
+    { x: x - 8 + jitter(rng, 0.9), y: y + bubbleHeight - 2 },
+    { x: x - 1 + jitter(rng, 0.8), y: y + bubbleHeight + 8 + jitter(rng, 0.8) },
+    { x: x + 6 + jitter(rng, 0.9), y: y + bubbleHeight - 1 },
   ], rng, 1.2);
 
   return `
   <g filter="url(#bubble-wobble)">
-    ${renderClosedSketch(outline, rng, { fill: 'white', width: 2.0, opacity: 0.98 })}
-    ${renderClosedSketch(tail, rng, { fill: 'white', width: 1.8, opacity: 0.97, doubleStroke: false })}
+    ${renderClosedSketch(outline, rng, { fill: 'white', width: 1.65, opacity: 0.96 })}
+    ${renderClosedSketch(tail, rng, { fill: 'white', width: 1.45, opacity: 0.95, doubleStroke: false })}
   </g>
   ${lines.map((line, index) => (
-    `<text x="${fmt(x)}" y="${fmt(y + 22 + index * 16)}" text-anchor="middle" class="comic-text">${escapeXml(line)}</text>`
+    `<text x="${fmt(x)}" y="${fmt(y + 15 + index * 14)}" text-anchor="middle" class="comic-text">${escapeXml(line)}</text>`
   )).join('')}
 `;
 }
 
 function drawThoughtBubble(x: number, y: number, text: string, maxWidth: number, seed: number): string {
-  const lines = wrapText(text, 30).slice(0, 4);
-  const bubbleHeight = lines.length * 14 + 24;
-  const bubbleWidth = Math.min(maxWidth, Math.max(176, longestLine(lines) * 7 + 40));
+  const lines = wrapText(text, 24).slice(0, 3);
+  const bubbleHeight = lines.length * 13 + 18;
+  const maxByArea = Math.max(110, (PANEL_WIDTH * PANEL_HEIGHT * 0.22) / bubbleHeight);
+  const bubbleWidth = Math.min(maxWidth, maxByArea, Math.max(112, longestLine(lines) * 6.5 + 26));
   const rng = createRng(hashString(`thought|${seed}|${text}`));
   const cloud = roughCloudPoints(x, y + bubbleHeight / 2, bubbleWidth / 2, bubbleHeight / 2, rng);
-  const puffOne = roughLoopPoints(x - 24, y + bubbleHeight + 3, 4.4, 4.1, rng, SKETCH_CONTROLS, { pointCount: 8, radialVariance: 0.1 });
-  const puffTwo = roughLoopPoints(x - 12, y + bubbleHeight + 12, 3.4, 3.1, rng, SKETCH_CONTROLS, { pointCount: 8, radialVariance: 0.1 });
+  const puffOne = roughLoopPoints(x - 19, y + bubbleHeight + 2, 3.7, 3.5, rng, SKETCH_CONTROLS, { pointCount: 8, radialVariance: 0.1 });
+  const puffTwo = roughLoopPoints(x - 10, y + bubbleHeight + 9, 2.8, 2.6, rng, SKETCH_CONTROLS, { pointCount: 8, radialVariance: 0.1 });
 
   return `
   <g filter="url(#thought-wobble)">
-    ${renderClosedSketch(cloud, rng, { fill: '#f6f6f6', width: 1.9, opacity: 0.97 })}
-    ${renderClosedSketch(puffOne, rng, { fill: '#f6f6f6', width: 1.2, opacity: 0.95, doubleStroke: false })}
-    ${renderClosedSketch(puffTwo, rng, { fill: '#f6f6f6', width: 1.1, opacity: 0.95, doubleStroke: false })}
+    ${renderClosedSketch(cloud, rng, { fill: '#f6f6f6', width: 1.55, opacity: 0.94 })}
+    ${renderClosedSketch(puffOne, rng, { fill: '#f6f6f6', width: 1.0, opacity: 0.93, doubleStroke: false })}
+    ${renderClosedSketch(puffTwo, rng, { fill: '#f6f6f6', width: 0.95, opacity: 0.93, doubleStroke: false })}
   </g>
   ${lines.map((line, index) => (
-    `<text x="${fmt(x)}" y="${fmt(y + 18 + index * 14)}" text-anchor="middle" class="robot-thought">${escapeXml(line)}</text>`
+    `<text x="${fmt(x)}" y="${fmt(y + 14 + index * 13)}" text-anchor="middle" class="robot-thought">${escapeXml(line)}</text>`
   )).join('')}
 `;
 }
@@ -510,7 +600,7 @@ function drawTerminalScene(x: number, y: number, width: number, seed: number): s
   const monitorY = y - 20;
 
   let content = `<g filter="url(#prop-wobble)">`;
-  content += renderOpenSketch(roughLinePoints(deskLeft, deskRight, rng, SKETCH_CONTROLS, 4, 0.06), rng, { width: 2.1, opacity: 0.88 });
+  content += renderOpenSketch(roughLinePoints(deskLeft, deskRight, rng, SKETCH_CONTROLS, 4, 0.06), rng, { stroke: '#646464', width: 1.85, opacity: 0.72 });
   content += renderOpenSketch(
     roughLinePoints(
       { x: monitorX - 20, y: monitorY + 18 },
@@ -521,12 +611,12 @@ function drawTerminalScene(x: number, y: number, width: number, seed: number): s
       0.05,
     ),
     rng,
-    { width: 1.8, opacity: 0.82, doubleStroke: false },
+    { stroke: '#646464', width: 1.5, opacity: 0.68, doubleStroke: false },
   );
   content += renderClosedSketch(
     roughRectanglePoints(monitorX - 34, monitorY - 18, 64, 38, rng, SKETCH_CONTROLS, 2.2),
     rng,
-    { fill: 'white', width: 1.9, opacity: 0.88, doubleStroke: false },
+    { fill: 'white', stroke: '#676767', width: 1.5, opacity: 0.66, doubleStroke: false },
   );
   content += renderOpenSketch(
     roughLinePoints(
@@ -538,7 +628,7 @@ function drawTerminalScene(x: number, y: number, width: number, seed: number): s
       0.05,
     ),
     rng,
-    { width: 1.3, opacity: 0.74, doubleStroke: false },
+    { stroke: '#6d6d6d', width: 1.1, opacity: 0.56, doubleStroke: false },
   );
   content += renderClosedSketch(
     roughPolygonPoints([
@@ -548,7 +638,7 @@ function drawTerminalScene(x: number, y: number, width: number, seed: number): s
       { x: x + width * 0.34 - 20, y: y + 16 },
     ], rng, 1.3),
     rng,
-    { fill: 'white', width: 1.5, opacity: 0.78, doubleStroke: false },
+    { fill: 'white', stroke: '#6a6a6a', width: 1.2, opacity: 0.58, doubleStroke: false },
   );
   content += renderOpenSketch(
     roughLinePoints(
@@ -560,12 +650,12 @@ function drawTerminalScene(x: number, y: number, width: number, seed: number): s
       0.04,
     ),
     rng,
-    { width: 0.95, opacity: 0.62, doubleStroke: false },
+    { stroke: '#7a7a7a', width: 0.9, opacity: 0.5, doubleStroke: false },
   );
   content += renderClosedSketch(
     roughLoopPoints(x + width * 0.18, y + 10, 7.5, 7.5, rng, SKETCH_CONTROLS, { pointCount: 10, radialVariance: 0.09 }),
     rng,
-    { fill: 'white', width: 1.35, opacity: 0.8, doubleStroke: false },
+    { fill: 'white', stroke: '#6a6a6a', width: 1.0, opacity: 0.58, doubleStroke: false },
   );
   content += renderOpenSketch(
     roughLinePoints(
@@ -577,7 +667,7 @@ function drawTerminalScene(x: number, y: number, width: number, seed: number): s
       0.04,
     ),
     rng,
-    { width: 1.0, opacity: 0.7, doubleStroke: false },
+    { stroke: '#747474', width: 0.85, opacity: 0.5, doubleStroke: false },
   );
   content += `</g>`;
   return content;
