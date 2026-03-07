@@ -216,13 +216,13 @@ function createCircuitFlow() {
     const sampler = createSampler(pathPoints);
     const group = new THREE.Group();
     const hue = rand(0.51, 0.57);
-    const baseColor = new THREE.Color().setHSL(hue, rand(0.78, 0.94), rand(0.5, 0.62));
+    const baseColor = new THREE.Color().setHSL(hue, rand(0.62, 0.8), rand(0.42, 0.54));
     const material = new THREE.MeshBasicMaterial({
       color: baseColor,
       transparent: true,
-      opacity: 0.34,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      opacity: 0.22,
+      depthWrite: true,
+      blending: THREE.NormalBlending,
     });
 
     const baseThickness = rand(0.08, 0.14);
@@ -363,8 +363,8 @@ function animate() {
       for (const joint of circuit.joints) {
         joint.scale.setScalar(thickness * 1.08);
       }
-      circuit.material.opacity = 0.15 + proximity * 0.7;
-      circuit.material.color.copy(circuit.baseColor).lerp(colorNear, proximity * 0.75);
+      circuit.material.opacity = 0.08 + proximity * 0.34;
+      circuit.material.color.copy(circuit.baseColor).lerp(colorNear, proximity * 0.45);
 
       const linePulseSpeed = (PULSE_SPEED_BASE + flowSpeed * PULSE_SPEED_FLOW_GAIN) * circuit.speedFactor;
       for (const pulse of circuit.pulses) {
