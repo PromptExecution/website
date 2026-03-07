@@ -220,7 +220,7 @@ function sanitizeLine(input: unknown, maxLength = 65): string | undefined {
   if (typeof input !== 'string') return undefined;
   const clean = input.replace(/\s+/g, ' ').trim();
   if (!clean) return undefined;
-  return clean.slice(0, maxLength);
+  return truncateAtWord(clean, maxLength);
 }
 
 function sanitizeThought(input: unknown): string | undefined {
@@ -231,7 +231,7 @@ function sanitizeThought(input: unknown): string | undefined {
     .filter(Boolean)
     .slice(0, 3)
     .map((line) => (line.startsWith('>') ? line : `> ${line}`))
-    .map((line) => line.slice(0, 34));
+    .map((line) => truncateAtWord(line, 34));
 
   if (lines.length === 0) return undefined;
   return lines.join('\n');
@@ -316,4 +316,12 @@ function parseJsonFromText(raw: string): any {
       return null;
     }
   }
+}
+
+function truncateAtWord(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  const clipped = text.slice(0, maxLength);
+  const boundary = clipped.lastIndexOf(' ');
+  if (boundary < 10) return clipped.trim();
+  return clipped.slice(0, boundary).trim();
 }
