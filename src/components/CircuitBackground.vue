@@ -18,15 +18,18 @@ interface PulseMarker {
   core: THREE.Mesh;
   aura: THREE.Mesh;
   phase: number;
-  speed: number;
 }
 
 interface CircuitLine {
-  line: THREE.Line;
-  material: THREE.LineDashedMaterial;
+  group: THREE.Group;
+  segments: THREE.Mesh[];
+  material: THREE.MeshBasicMaterial;
+  baseColor: THREE.Color;
   sampler: PathSampler;
   pulses: PulseMarker[];
-  dashSpeed: number;
+  speedFactor: number;
+  depthOffset: number;
+  baseThickness: number;
 }
 
 let scene: THREE.Scene | null = null;
@@ -41,9 +44,18 @@ const circuits: CircuitLine[] = [];
 const pointerParallax = new THREE.Vector2(0, 0);
 const pointerTarget = new THREE.Vector2(0, 0);
 const clock = new THREE.Clock();
-const FLOW_SPEED_START = 1.45;
+const FLOW_SPEED_START = 11.5;
 const FLOW_ACCEL_PER_SECOND = 0.018;
-const FLOW_SPEED_MAX = 2.35;
+const FLOW_SPEED_MAX = 15.5;
+const FLOW_DEPTH_SPAN = 320;
+const FLOW_NEAR_LIMIT = 48;
+const PULSE_SPEED_BASE = 0.032;
+const PULSE_SPEED_FLOW_GAIN = 0.0022;
+
+const SEGMENT_AXIS = new THREE.Vector3(1, 0, 0);
+const cameraToGroup = new THREE.Vector3();
+const colorNear = new THREE.Color(0xc8ffff);
+let flowTravel = 0;
 
 function rand(min: number, max: number) {
   return min + Math.random() * (max - min);
@@ -142,6 +154,19 @@ function samplePath(sampler: PathSampler, t: number) {
   return sampler.points[sampler.points.length - 1].clone();
 }
 
+function createWireSegment(start: THREE.Vector3, end: THREE.Vector3, material: THREE.MeshBasicMaterial, baseThickness: number) {
+  const direction = end.clone().sub(start);
+  const length = direction.length();
+  if (length <= 0.001) return null;
+
+  const geometry = new THREE.BoxGeometry(length, 1, 1);
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(SEGMENT_AXIS, direction.normalize());
+  mesh.scale.set(1, baseThickness, baseThickness);
+  return mesh;
+}
+
 function addCenterHole() {
   if (!scene) return;
 
@@ -179,26 +204,31 @@ function addCenterHole() {
 function createCircuitFlow() {
   if (!scene) return;
 
-  const wireColor = new THREE.Color(0x45c8ff);
-
-  for (let i = 0; i < 40; i += 1) {
+  for (let i = 0; i < 42; i += 1) {
     const pathPoints = createOrthogonalPath();
-    const geometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
-    const material = new THREE.LineDashedMaterial({
-      color: wireColor,
+    const sampler = createSampler(pathPoints);
+    const group = new THREE.Group();
+    const hue = rand(0.51, 0.57);
+    const baseColor = new THREE.Color().setHSL(hue, rand(0.78, 0.94), rand(0.5, 0.62));
+    const material = new THREE.MeshBasicMaterial({
+      color: baseColor,
       transparent: true,
-      opacity: rand(0.22, 0.5),
-      dashSize: rand(1.4, 3.8),
-      gapSize: rand(0.8, 2.3),
+      opacity: 0.34,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
     });
 
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-    scene.add(line);
+    const baseThickness = rand(0.2, 0.36);
+    const segments: THREE.Mesh[] = [];
+    for (let j = 1; j < pathPoints.length; j += 1) {
+      const segment = createWireSegment(pathPoints[j - 1], pathPoints[j], material, baseThickness);
+      if (!segment) continue;
+      group.add(segment);
+      segments.push(segment);
+    }
 
-    const sampler = createSampler(pathPoints);
     const pulses: PulseMarker[] = [];
-    const pulseCount = 3;
+    const pulseCount = 2 + Math.floor(Math.random() * 2);
 
     for (let j = 0; j < pulseCount; j += 1) {
       const core = new THREE.Mesh(
@@ -213,7 +243,7 @@ function createCircuitFlow() {
       );
 
       const aura = new THREE.Mesh(
-        new THREE.SphereGeometry(rand(0.55, 0.92), 14, 14),
+        new THREE.SphereGeometry(rand(0.55, 1.0), 14, 14),
         new THREE.MeshBasicMaterial({
           color: 0x34b6ff,
           transparent: true,
@@ -223,22 +253,29 @@ function createCircuitFlow() {
         }),
       );
 
-      scene.add(core);
-      scene.add(aura);
+      group.add(core);
+      group.add(aura);
       pulses.push({
         core,
         aura,
         phase: j / pulseCount + Math.random() * 0.12,
-        speed: rand(0.07, 0.17),
       });
     }
 
+    const depthOffset = rand(0, FLOW_DEPTH_SPAN);
+    group.position.z = depthOffset - FLOW_DEPTH_SPAN + FLOW_NEAR_LIMIT;
+    scene.add(group);
+
     circuits.push({
-      line,
+      group,
+      segments,
       material,
+      baseColor,
       sampler,
       pulses,
-      dashSpeed: rand(0.22, 0.65),
+      speedFactor: rand(0.94, 1.08),
+      depthOffset,
+      baseThickness,
     });
   }
 
@@ -277,19 +314,39 @@ function animate() {
 
   const delta = clock.getDelta();
   const elapsed = clock.elapsedTime;
-  const flowMultiplier = Math.min(FLOW_SPEED_MAX, FLOW_SPEED_START + elapsed * FLOW_ACCEL_PER_SECOND);
+  const flowSpeed = Math.min(FLOW_SPEED_MAX, FLOW_SPEED_START + elapsed * FLOW_ACCEL_PER_SECOND);
+  flowTravel += delta * flowSpeed;
 
   pointerParallax.lerp(pointerTarget, 0.035);
   camera.position.x = pointerParallax.x * 2.4;
   camera.position.y = pointerParallax.y * 1.8;
-  camera.position.z = 72 + Math.sin(elapsed * 0.25) * 1.8;
+  camera.position.z = 72;
   camera.lookAt(0, 0, 0);
 
   if (BACKGROUND_MODE === 'circuit') {
     for (const circuit of circuits) {
-      circuit.material.dashOffset -= delta * circuit.dashSpeed * flowMultiplier;
+      const wrappedDepth = (circuit.depthOffset + flowTravel * circuit.speedFactor) % FLOW_DEPTH_SPAN;
+      circuit.group.position.z = wrappedDepth - FLOW_DEPTH_SPAN + FLOW_NEAR_LIMIT;
+      circuit.group.updateMatrixWorld();
+      cameraToGroup.setFromMatrixPosition(circuit.group.matrixWorld);
+      const distanceToCamera = camera.position.distanceTo(cameraToGroup);
+      const proximity = THREE.MathUtils.clamp(1 - distanceToCamera / 250, 0, 1);
+      const thickness = circuit.baseThickness * (0.62 + proximity * 2.15);
+
+      for (const segment of circuit.segments) {
+        segment.scale.y = thickness;
+        segment.scale.z = thickness;
+      }
+      circuit.material.opacity = 0.15 + proximity * 0.7;
+      circuit.material.color.copy(circuit.baseColor).lerp(colorNear, proximity * 0.75);
+
+      const linePulseSpeed = (PULSE_SPEED_BASE + flowSpeed * PULSE_SPEED_FLOW_GAIN) * circuit.speedFactor;
       for (const pulse of circuit.pulses) {
-        const progress = (elapsed * pulse.speed * flowMultiplier + pulse.phase) % 1;
+        let progress = (elapsed * linePulseSpeed + pulse.phase) % 1;
+        if (proximity > 0.58) {
+          const jumpStep = THREE.MathUtils.lerp(0.028, 0.11, (proximity - 0.58) / 0.42);
+          progress = Math.round(progress / jumpStep) * jumpStep;
+        }
         const flowT = Math.pow(progress, 0.82);
         const position = samplePath(circuit.sampler, flowT);
         pulse.core.position.copy(position);
@@ -299,10 +356,10 @@ function animate() {
         const pulseWave = 0.88 + Math.sin((elapsed + pulse.phase) * 9) * 0.12;
         const coreMaterial = pulse.core.material as THREE.MeshBasicMaterial;
         const auraMaterial = pulse.aura.material as THREE.MeshBasicMaterial;
-        coreMaterial.opacity = 0.12 + distanceFade * 0.9;
-        auraMaterial.opacity = 0.08 + distanceFade * 0.28;
-        pulse.core.scale.setScalar(pulseWave);
-        pulse.aura.scale.setScalar(0.9 + pulseWave * 0.28);
+        coreMaterial.opacity = 0.08 + proximity * 0.42 + distanceFade * 0.46;
+        auraMaterial.opacity = 0.04 + proximity * 0.19 + distanceFade * 0.16;
+        pulse.core.scale.setScalar((0.76 + proximity * 0.36) * pulseWave);
+        pulse.aura.scale.setScalar((0.84 + proximity * 0.38) + pulseWave * 0.22);
       }
     }
 
@@ -343,6 +400,7 @@ function handleResize() {
 function initScene() {
   if (!canvasRef.value) return;
 
+  flowTravel = 0;
   scene = new THREE.Scene();
   scene.fog = new THREE.FogExp2(0x05070b, 0.01);
 
@@ -381,7 +439,9 @@ function disposeScene() {
   window.removeEventListener('mousemove', handleMouseMove);
 
   for (const circuit of circuits) {
-    circuit.line.geometry.dispose();
+    for (const segment of circuit.segments) {
+      segment.geometry.dispose();
+    }
     circuit.material.dispose();
     for (const pulse of circuit.pulses) {
       pulse.core.geometry.dispose();
