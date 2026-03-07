@@ -278,7 +278,7 @@ Before going live:
 
 ## 📝 License
 
-PATRON Multimedia License - See LICENSE file
+MIT License - See LICENSE file
 
 ---
 

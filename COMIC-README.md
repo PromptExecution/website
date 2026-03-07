@@ -199,13 +199,13 @@ Every comic includes:
 
 ## License
 
-PATRON Multimedia License - See LICENSE file
+MIT License - See LICENSE file
 
 ## Credits
 
 - **Inspired by**: xkcd, BOFH, Dilbert
 - **Built with**: Cloudflare Developer Platform
-- **Font**: xkcd font (open source)
+- **Font**: PATRON (licensed)
 - **Aesthetic**: Windows 95
 
 ---

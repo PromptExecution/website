@@ -20,7 +20,7 @@
 
 <style scoped>
 .footy {
-    font-family: 'PEPatron-PersonalUse-Regular', 'PEExodarOutline', 'Roboto'; /* sans-serif; */
+    font-family: 'PEPatron-PersonalUse-Regular', 'Roboto', sans-serif;
     font-size: 0.8em;
 
     vertical-align: middle;

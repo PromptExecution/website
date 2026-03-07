@@ -81,19 +81,6 @@ onUnmounted(() => {
   font-style: normal;
 }
 
-@font-face {
-  font-family: 'ExodarOutline';
-  src: url('/fonts/Exodar-Outline.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Exodar-Outline';
-  src: url('/fonts/Exodar-Outline.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}
 
 .logo-wrapper {
     display: flex;
@@ -157,7 +144,7 @@ onUnmounted(() => {
 }
 
 .logo-subtitle {
-    font-family: 'ExodarOutline', 'Exodar-Outline', monospace;
+    font-family: 'Patron-PersonalUse-Regular', 'Patron - Personal Use', 'Patron', serif;
     font-size: 41px;
     font-weight: normal;
     color: transparent;

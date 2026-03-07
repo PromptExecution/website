@@ -158,5 +158,5 @@ just architect-summary .agent-runs/run-YYYYMMDDTHHMMSSZ
 
 ## License
 
-This project uses the PATRON Multimedia License.
+This project uses the MIT License.
 See `LICENSE`.
