@@ -30,6 +30,11 @@ const disableComicEngine = () => {
   localStorage.setItem(COMIC_FLAG_KEY, 'false');
 };
 
+const closeMenu = () => {
+  disableComicEngine();
+  window.dispatchEvent(new CustomEvent('pe-hide-ui-shell'));
+};
+
 onMounted(() => {
   showComicEngine.value = localStorage.getItem(COMIC_FLAG_KEY) === 'true';
   activeTab.value = showComicEngine.value ? 'comic' : 'archive';
@@ -61,7 +66,7 @@ onUnmounted(() => {
       <div class="title-bar-controls">
         <button aria-label="Minimize"></button>
         <button aria-label="Maximize"></button>
-        <button aria-label="Close" @click="disableComicEngine"></button>
+        <button aria-label="Close" @click="closeMenu"></button>
       </div>
     </div>
 

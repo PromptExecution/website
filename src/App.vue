@@ -1,6 +1,6 @@
 <!-- src/App.vue -->
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import CookieBanner from '@/components/CookieBanner.vue';
 import CircuitBackground from '@/components/CircuitBackground.vue';
 import PromptExecutionLogo from '@/components/PromptExecutionLogo.vue';
@@ -8,6 +8,11 @@ import Win95TabContainer from '@/components/Win95TabContainer.vue';
 import { useMainStore } from '@/store/mainStore';
 
 const mainStore = useMainStore();
+const showUiShell = ref(true);
+
+const handleHideUiShell = () => {
+  showUiShell.value = false;
+};
 
 // Example of how you might control the visibility of the banner
 // This is just a placeholder logic, adjust according to your needs
@@ -15,15 +20,20 @@ onMounted(() => {
   // Logic to determine if the banner should be shown
   // For example, check if the user has already accepted cookies
   // showBanner.value = ...;
+  window.addEventListener('pe-hide-ui-shell', handleHideUiShell);
 });
 import TheFooter from './components/TheFooter.vue';
+
+onUnmounted(() => {
+  window.removeEventListener('pe-hide-ui-shell', handleHideUiShell);
+});
 
 </script>
 
 <template>
   <div class="app-shell">
     <CircuitBackground />
-    <div class="app-content">
+    <div v-if="showUiShell" class="app-content">
       <div>
         <PromptExecutionLogo />
       </div>
