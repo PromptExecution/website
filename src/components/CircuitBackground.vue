@@ -51,6 +51,8 @@ const FLOW_ACCEL_PER_SECOND = 0.018;
 const FLOW_SPEED_MAX = 15.5;
 const FLOW_DEPTH_SPAN = 320;
 const FLOW_NEAR_LIMIT = 48;
+const CENTER_DEPTH = -92;
+const CIRCUIT_COUNT = 68;
 const PULSE_SPEED_BASE = 0.032;
 const PULSE_SPEED_FLOW_GAIN = 0.0022;
 
@@ -77,60 +79,62 @@ function pushPoint(points: THREE.Vector3[], point: THREE.Vector3) {
   }
 }
 
-function randomShellPosition(radius: number) {
-  const point = new THREE.Vector3(
-    rand(-radius, radius),
-    rand(-radius, radius),
-    rand(-radius, radius),
-  );
-  const dominantAxis = Math.floor(Math.random() * 3);
-  const direction = Math.random() > 0.5 ? 1 : -1;
-  if (dominantAxis === 0) point.x = direction * radius;
-  if (dominantAxis === 1) point.y = direction * radius;
-  if (dominantAxis === 2) point.z = direction * radius;
-  return point;
-}
-
 function createOrthogonalPath() {
   const points: THREE.Vector3[] = [];
-  const current = randomShellPosition(rand(55, 90));
+  const current = new THREE.Vector3(0, 0, 0);
   pushPoint(points, current.clone());
 
   let previousAxis = -1;
-  const segmentCount = Math.floor(rand(8, 15));
+  const segmentCount = Math.floor(rand(10, 18));
 
   for (let i = 0; i < segmentCount; i += 1) {
     const axis = pickAxis(previousAxis);
     previousAxis = axis;
 
     const next = current.clone();
-    const axisValue = axis === 0 ? current.x : axis === 1 ? current.y : current.z;
-    const towardCenter = Math.sign(-axisValue) || (Math.random() > 0.5 ? 1 : -1);
-    const maxStep = Math.max(6, Math.abs(axisValue) * 0.85);
-    const step = Math.min(rand(6, 15), maxStep);
+    const direction = Math.random() > 0.5 ? 1 : -1;
+    const step = rand(3.5, 7.5) + i * 0.95;
 
-    if (axis === 0) next.x += towardCenter * step;
-    if (axis === 1) next.y += towardCenter * step;
-    if (axis === 2) next.z += towardCenter * step;
+    if (axis === 0) next.x += direction * step;
+    if (axis === 1) next.y += direction * step;
+    if (axis === 2) next.z += direction * step;
 
-    next.x = THREE.MathUtils.clamp(next.x, -95, 95);
-    next.y = THREE.MathUtils.clamp(next.y, -95, 95);
-    next.z = THREE.MathUtils.clamp(next.z, -95, 95);
+    next.x = THREE.MathUtils.clamp(next.x, -125, 125);
+    next.y = THREE.MathUtils.clamp(next.y, -125, 125);
+    next.z = THREE.MathUtils.clamp(next.z, -125, 125);
 
     current.copy(next);
     pushPoint(points, current.clone());
   }
 
-  const axes = (['x', 'y', 'z'] as Array<'x' | 'y' | 'z'>).sort(() => Math.random() - 0.5);
-  for (const axis of axes) {
-    if (Math.abs(current[axis]) <= 1) continue;
+  if (current.length() < 65) {
+    const axes = (['x', 'y', 'z'] as Array<'x' | 'y' | 'z'>).sort(() => Math.random() - 0.5);
+    const boost = 65 - current.length() + rand(10, 28);
+    for (const axis of axes) {
+      const next = current.clone();
+      const direction = Math.sign(current[axis]) || (Math.random() > 0.5 ? 1 : -1);
+      next[axis] += direction * (boost / 3);
+      next.x = THREE.MathUtils.clamp(next.x, -130, 130);
+      next.y = THREE.MathUtils.clamp(next.y, -130, 130);
+      next.z = THREE.MathUtils.clamp(next.z, -130, 130);
+      current.copy(next);
+      pushPoint(points, current.clone());
+    }
+  }
+
+  const finalSpreadAxes = (['x', 'y', 'z'] as Array<'x' | 'y' | 'z'>).sort(() => Math.random() - 0.5);
+  for (const axis of finalSpreadAxes) {
+    if (Math.abs(current[axis]) >= 118) continue;
     const next = current.clone();
-    next[axis] = 0;
+    const direction = Math.sign(current[axis]) || (Math.random() > 0.5 ? 1 : -1);
+    next[axis] += direction * rand(8, 20);
+    next.x = THREE.MathUtils.clamp(next.x, -130, 130);
+    next.y = THREE.MathUtils.clamp(next.y, -130, 130);
+    next.z = THREE.MathUtils.clamp(next.z, -130, 130);
     current.copy(next);
     pushPoint(points, current.clone());
   }
 
-  pushPoint(points, new THREE.Vector3(0, 0, 0));
   return points;
 }
 
@@ -175,29 +179,28 @@ function addCenterHole() {
   if (!scene) return;
 
   centerHole = new THREE.Mesh(
-    new THREE.SphereGeometry(8, 48, 48),
+    new THREE.SphereGeometry(1.65, 28, 28),
     new THREE.MeshBasicMaterial({ color: 0x020206 }),
   );
   scene.add(centerHole);
 
   centerRing = new THREE.Mesh(
-    new THREE.RingGeometry(9.2, 12.4, 80),
+    new THREE.RingGeometry(2.1, 3.2, 64),
     new THREE.MeshBasicMaterial({
       color: 0x0f2a35,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.32,
       side: THREE.DoubleSide,
     }),
   );
-  centerRing.rotation.x = Math.PI / 2;
   scene.add(centerRing);
 
   centerHalo = new THREE.Mesh(
-    new THREE.SphereGeometry(13.5, 36, 36),
+    new THREE.SphereGeometry(4.8, 24, 24),
     new THREE.MeshBasicMaterial({
       color: 0x0a2734,
       transparent: true,
-      opacity: 0.14,
+      opacity: 0.09,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     }),
@@ -208,7 +211,7 @@ function addCenterHole() {
 function createCircuitFlow() {
   if (!scene) return;
 
-  for (let i = 0; i < 42; i += 1) {
+  for (let i = 0; i < CIRCUIT_COUNT; i += 1) {
     const pathPoints = createOrthogonalPath();
     const sampler = createSampler(pathPoints);
     const group = new THREE.Group();
@@ -387,19 +390,19 @@ function animate() {
     }
 
     if (centerRing) {
-      centerRing.position.copy(focalPoint);
+      centerRing.position.set(focalPoint.x, focalPoint.y, CENTER_DEPTH);
       centerRing.rotation.z += delta * 0.06;
       const ringMaterial = centerRing.material as THREE.MeshBasicMaterial;
-      ringMaterial.opacity = 0.3 + Math.sin(elapsed * 1.4) * 0.08;
+      ringMaterial.opacity = 0.24 + Math.sin(elapsed * 1.4) * 0.05;
     }
     if (centerHalo) {
-      centerHalo.position.copy(focalPoint);
+      centerHalo.position.set(focalPoint.x, focalPoint.y, CENTER_DEPTH);
       const haloMaterial = centerHalo.material as THREE.MeshBasicMaterial;
-      haloMaterial.opacity = 0.1 + Math.sin(elapsed * 1.1) * 0.04;
-      centerHalo.scale.setScalar(0.98 + Math.sin(elapsed * 0.9) * 0.03);
+      haloMaterial.opacity = 0.075 + Math.sin(elapsed * 1.1) * 0.028;
+      centerHalo.scale.setScalar(0.96 + Math.sin(elapsed * 0.9) * 0.025);
     }
     if (centerHole) {
-      centerHole.position.copy(focalPoint);
+      centerHole.position.set(focalPoint.x, focalPoint.y, CENTER_DEPTH);
     }
   } else if (legacyStars) {
     legacyStars.rotation.y += delta * 0.03;
