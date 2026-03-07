@@ -190,6 +190,12 @@ onMounted(() => {
   max-width: 1400px;
   margin: 12px auto 24px;
   min-height: calc(100vh - 110px);
+  display: flex;
+  align-items: flex-end;
+}
+
+.cli-only-container > * {
+  width: 100%;
 }
 
 @media (max-width: 767px) {

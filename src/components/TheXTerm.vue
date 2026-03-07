@@ -294,19 +294,41 @@ const commandStore = [
 
 
 .cli-container {
-  background-color: black;
+  position: relative;
+  background: linear-gradient(180deg, #4f4f4f 0%, #383838 35%, #2a2a2a 100%);
   color: white;
-  border-radius: 10px;
-  padding: 10px;
+  border: 1px solid #6f6f6f;
+  border-radius: 14px;
+  padding: 4px;
   display: flex;
   flex: 1 1 auto;
   min-height: clamp(420px, calc(100dvh - 260px), 960px);
   box-sizing: border-box;
   overflow: hidden;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.cli-container::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 9px;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(120, 255, 170, 0.03) 0px,
+    rgba(120, 255, 170, 0.03) 2px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0) 4px
+  );
 }
 
 
 .Terminal {
+  position: relative;
+  z-index: 1;
   margin: 0;
   padding: 0;
   text-align: left;
@@ -317,26 +339,35 @@ const commandStore = [
 :deep(.t-container) {
   width: 100% !important;
   height: 100% !important;
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid #4b4b4b;
   box-sizing: border-box;
   overflow: hidden;
 }
 
 :deep(.t-window) {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   min-height: 100% !important;
+  bottom: 0 !important;
   inset: 0 !important;
-  padding: 12px 16px 12px 20px;
+  padding: 8px 12px 10px 14px;
   box-sizing: border-box;
+}
+
+:deep(.t-window > :first-child) {
+  margin-top: auto;
 }
 
 @media (max-width: 767px) {
   .cli-container {
     min-height: clamp(360px, calc(100dvh - 210px), 720px);
-    padding: 8px;
+    padding: 3px;
   }
 
   :deep(.t-window) {
-    padding: 10px 12px 10px 16px;
+    padding: 8px 10px 9px 12px;
   }
 }
 
