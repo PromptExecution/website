@@ -2,7 +2,7 @@ import { CAST, getCharacterById, pickCharactersExcluding, type CastCharacter } f
 import { generateComicScript, type ComicScript } from './comic-generator.ts';
 import { renderComicToSVG } from './svg-renderer.ts';
 
-const DEFAULT_SCRIPT_MODEL_A = '@cf/qwen/qwen3-30b-a3b-fp8';
+const DEFAULT_SCRIPT_MODEL_A = '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b';
 const DEFAULT_SCRIPT_MODEL_B = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const DEFAULT_TOPIC_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
 
