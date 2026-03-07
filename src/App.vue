@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import CookieBanner from '@/components/CookieBanner.vue';
+import CircuitBackground from '@/components/CircuitBackground.vue';
 import PromptExecutionLogo from '@/components/PromptExecutionLogo.vue';
 import Win95TabContainer from '@/components/Win95TabContainer.vue';
 import { useMainStore } from '@/store/mainStore';
@@ -20,19 +21,34 @@ import TheFooter from './components/TheFooter.vue';
 </script>
 
 <template>
-  <div>
-    <PromptExecutionLogo />
+  <div class="app-shell">
+    <CircuitBackground />
+    <div class="app-content">
+      <div>
+        <PromptExecutionLogo />
+      </div>
+
+      <!-- Win95-style tabbed interface with Comic, Archive, Subscribe, and CLI tabs -->
+      <Win95TabContainer />
+
+      <TheFooter />
+
+      <CookieBanner v-if="!mainStore.isCookieConsentSet" />
+    </div>
   </div>
-
-  <!-- Win95-style tabbed interface with Comic, Archive, Subscribe, and CLI tabs -->
-  <Win95TabContainer />
-
-  <TheFooter />
-
-  <CookieBanner v-if="!mainStore.isCookieConsentSet" />
 </template>
 
 <style scoped>
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+}
+
+.app-content {
+  position: relative;
+  z-index: 1;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;

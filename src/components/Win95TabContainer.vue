@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { defineAsyncComponent, ref, onMounted } from 'vue';
 
+const SHOW_COMIC_ENGINE = false;
+
 const ComicViewer = defineAsyncComponent(() => import('./ComicViewer.vue'));
 const ComicArchive = defineAsyncComponent(() => import('./ComicArchive.vue'));
 const PushSubscribe = defineAsyncComponent(() => import('./PushSubscribe.vue'));
 const TheXTerm = defineAsyncComponent(() => import('./TheXTerm.vue'));
 
-const activeTab = ref('comic');
+const defaultTab = SHOW_COMIC_ENGINE ? 'comic' : 'archive';
+const activeTab = ref(defaultTab);
 const selectedDay = ref<string | undefined>(undefined);
 
 const tabs = [
-  { id: 'comic', label: 'Comic' },
+  ...(SHOW_COMIC_ENGINE ? [{ id: 'comic', label: 'Comic' }] : []),
   { id: 'archive', label: 'Archive' },
   { id: 'subscribe', label: 'Subscribe' },
   { id: 'cli', label: 'CLI' }
@@ -24,7 +27,7 @@ onMounted(() => {
   if (tab && tabs.some(t => t.id === tab)) {
     activeTab.value = tab;
   }
-  if (day) {
+  if (SHOW_COMIC_ENGINE && day) {
     selectedDay.value = day;
     activeTab.value = 'comic';
   }
@@ -56,10 +59,13 @@ onMounted(() => {
 
       <div class="tab-content">
         <ComicViewer
-          v-if="activeTab === 'comic'"
+          v-if="SHOW_COMIC_ENGINE && activeTab === 'comic'"
           :day="selectedDay"
           @request-tab="activeTab = $event"
         />
+        <div v-if="!SHOW_COMIC_ENGINE && activeTab === 'archive'" class="comic-paused-banner">
+          Comic engine is temporarily hidden while the new background experience is being tuned.
+        </div>
         <ComicArchive v-if="activeTab === 'archive'" />
         <PushSubscribe v-if="activeTab === 'subscribe'" />
         <TheXTerm v-if="activeTab === 'cli'" />
@@ -163,6 +169,14 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.comic-paused-banner {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid #7f9db9;
+  background: #f0f4ff;
+  font-size: 12px;
 }
 
 .status-bar {
