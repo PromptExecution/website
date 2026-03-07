@@ -348,7 +348,6 @@ const commandStore = [
 :deep(.t-window) {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   min-height: 100% !important;
   bottom: 0 !important;
   inset: 0 !important;
@@ -356,8 +355,9 @@ const commandStore = [
   box-sizing: border-box;
 }
 
-:deep(.t-window > :first-child) {
-  margin-top: auto;
+:deep(.t-last-line) {
+  margin-top: auto !important;
+  margin-bottom: 4px !important;
 }
 
 @media (max-width: 767px) {

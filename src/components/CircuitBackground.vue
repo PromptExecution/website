@@ -41,6 +41,9 @@ const circuits: CircuitLine[] = [];
 const pointerParallax = new THREE.Vector2(0, 0);
 const pointerTarget = new THREE.Vector2(0, 0);
 const clock = new THREE.Clock();
+const FLOW_SPEED_START = 1.45;
+const FLOW_ACCEL_PER_SECOND = 0.018;
+const FLOW_SPEED_MAX = 2.35;
 
 function rand(min: number, max: number) {
   return min + Math.random() * (max - min);
@@ -274,6 +277,7 @@ function animate() {
 
   const delta = clock.getDelta();
   const elapsed = clock.elapsedTime;
+  const flowMultiplier = Math.min(FLOW_SPEED_MAX, FLOW_SPEED_START + elapsed * FLOW_ACCEL_PER_SECOND);
 
   pointerParallax.lerp(pointerTarget, 0.035);
   camera.position.x = pointerParallax.x * 2.4;
@@ -283,9 +287,9 @@ function animate() {
 
   if (BACKGROUND_MODE === 'circuit') {
     for (const circuit of circuits) {
-      circuit.material.dashOffset -= delta * circuit.dashSpeed;
+      circuit.material.dashOffset -= delta * circuit.dashSpeed * flowMultiplier;
       for (const pulse of circuit.pulses) {
-        const progress = (elapsed * pulse.speed + pulse.phase) % 1;
+        const progress = (elapsed * pulse.speed * flowMultiplier + pulse.phase) % 1;
         const flowT = Math.pow(progress, 0.82);
         const position = samplePath(circuit.sampler, flowT);
         pulse.core.position.copy(position);
