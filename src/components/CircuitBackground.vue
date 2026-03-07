@@ -26,6 +26,9 @@ interface PulseMarker {
 
 interface CircuitLine {
   group: THREE.Group;
+  blockGroup: THREE.Group;
+  blocks: LetterBlock[];
+  blockCursor: number;
   segments: THREE.Mesh[];
   joints: THREE.Mesh[];
   material: THREE.MeshBasicMaterial;
@@ -81,12 +84,7 @@ const focalTarget = new THREE.Vector3(0, 0, 0);
 const cameraLookTarget = new THREE.Vector3(0, 0, 0);
 const blockGeometry = new RoundedBoxGeometry(1, 1, 1, 5, 0.2);
 const blockLabelGeometry = new THREE.PlaneGeometry(0.62, 0.62);
-const blockAssemblyOffset = new THREE.Vector3(0, -19, CENTER_DEPTH + 26);
-const blockLookAt = new THREE.Vector3();
 let flowTravel = 0;
-let blockAssemblyGroup: THREE.Group | null = null;
-let blockCursor = 0;
-const letterBlocks: LetterBlock[] = [];
 
 function rand(min: number, max: number) {
   return min + Math.random() * (max - min);
@@ -249,21 +247,20 @@ function createLetterBlock(letter: string, bornAt: number): LetterBlock {
   return { group, labelTexture, labelMaterial, bornAt };
 }
 
-function layoutLetterBlocks() {
-  for (let i = 0; i < letterBlocks.length; i += 1) {
+function layoutLetterBlocks(blocks: LetterBlock[]) {
+  for (let i = 0; i < blocks.length; i += 1) {
     const col = i % BLOCK_COLS;
     const row = Math.floor(i / BLOCK_COLS) % BLOCK_ROWS;
     const layer = Math.floor(i / (BLOCK_COLS * BLOCK_ROWS));
     const x = (col - (BLOCK_COLS - 1) * 0.5) * (BLOCK_SIZE + BLOCK_GAP);
     const y = row * (BLOCK_SIZE + BLOCK_GAP);
     const z = layer * (BLOCK_SIZE * 0.78 + BLOCK_GAP * 0.6);
-    letterBlocks[i].group.position.set(x, y, z);
+    blocks[i].group.position.set(x, y, z);
   }
 }
 
-function removeLetterBlock(block: LetterBlock) {
-  if (!blockAssemblyGroup) return;
-  blockAssemblyGroup.remove(block.group);
+function removeLetterBlock(block: LetterBlock, fromGroup: THREE.Group) {
+  fromGroup.remove(block.group);
   for (const child of block.group.children) {
     const mesh = child as THREE.Mesh;
     if (mesh.material && !(Array.isArray(mesh.material))) {
@@ -276,36 +273,30 @@ function removeLetterBlock(block: LetterBlock) {
   block.labelTexture.dispose();
 }
 
-function spawnLetterBlock(elapsed: number) {
-  if (!scene || !blockAssemblyGroup) return;
-  const letter = BLOCK_SEQUENCE[blockCursor % BLOCK_SEQUENCE.length];
-  blockCursor += 1;
+function spawnLetterBlock(circuit: CircuitLine, elapsed: number) {
+  const letter = BLOCK_SEQUENCE[circuit.blockCursor % BLOCK_SEQUENCE.length];
+  circuit.blockCursor += 1;
   const block = createLetterBlock(letter, elapsed);
   block.group.scale.setScalar(0.14);
-  blockAssemblyGroup.add(block.group);
-  letterBlocks.push(block);
-  if (letterBlocks.length > MAX_BLOCKS) {
-    const oldest = letterBlocks.shift();
+  circuit.blockGroup.add(block.group);
+  circuit.blocks.push(block);
+  if (circuit.blocks.length > MAX_BLOCKS) {
+    const oldest = circuit.blocks.shift();
     if (oldest) {
-      removeLetterBlock(oldest);
+      removeLetterBlock(oldest, circuit.blockGroup);
     }
   }
-  layoutLetterBlocks();
+  layoutLetterBlocks(circuit.blocks);
 }
 
 function updateLetterBlocks(elapsed: number) {
-  if (!blockAssemblyGroup || !camera) return;
-
-  blockAssemblyGroup.position.copy(focalPoint).add(blockAssemblyOffset);
-  blockLookAt.copy(camera.position);
-  blockAssemblyGroup.lookAt(blockLookAt);
-  blockAssemblyGroup.rotateY(Math.PI);
-
-  for (const block of letterBlocks) {
-    const age = elapsed - block.bornAt;
-    const grow = THREE.MathUtils.clamp(age * 5.4, 0, 1);
-    const bounce = grow < 1 ? 1 + Math.sin(grow * Math.PI * 2.3) * 0.11 * (1 - grow) : 1;
-    block.group.scale.setScalar(grow * bounce);
+  for (const circuit of circuits) {
+    for (const block of circuit.blocks) {
+      const age = elapsed - block.bornAt;
+      const grow = THREE.MathUtils.clamp(age * 5.4, 0, 1);
+      const bounce = grow < 1 ? 1 + Math.sin(grow * Math.PI * 2.3) * 0.11 * (1 - grow) : 1;
+      block.group.scale.setScalar(grow * bounce);
+    }
   }
 }
 
@@ -345,13 +336,22 @@ function addCenterHole() {
 function createCircuitFlow() {
   if (!scene) return;
 
-  blockAssemblyGroup = new THREE.Group();
-  scene.add(blockAssemblyGroup);
-
   for (let i = 0; i < CIRCUIT_COUNT; i += 1) {
     const pathPoints = createOrthogonalPath();
     const sampler = createSampler(pathPoints);
     const group = new THREE.Group();
+    const endpoint = pathPoints[pathPoints.length - 1];
+    const beforeEndpoint = pathPoints[Math.max(0, pathPoints.length - 2)];
+    const endpointDirection = endpoint.clone().sub(beforeEndpoint);
+    if (endpointDirection.lengthSq() < 1e-5) {
+      endpointDirection.set(0, 0, 1);
+    } else {
+      endpointDirection.normalize();
+    }
+    const blockGroup = new THREE.Group();
+    blockGroup.position.copy(endpoint).addScaledVector(endpointDirection, BLOCK_SIZE * 0.65);
+    blockGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), endpointDirection);
+    group.add(blockGroup);
     const hue = rand(0.51, 0.57);
     const baseColor = new THREE.Color().setHSL(hue, rand(0.62, 0.8), rand(0.42, 0.54));
     const material = new THREE.MeshBasicMaterial({
@@ -433,6 +433,9 @@ function createCircuitFlow() {
 
     circuits.push({
       group,
+      blockGroup,
+      blocks: [],
+      blockCursor: 0,
       segments,
       joints,
       material,
@@ -518,10 +521,10 @@ function animate() {
       for (const pulse of circuit.pulses) {
         let progress = (elapsed * linePulseSpeed + pulse.phase) % 1;
         if (progress < 0) progress += 1;
-        const wrappedAtEnd = progress < pulse.lastProgress;
+        const wrappedAtEnd = pulse.lastProgress > 0.74 && progress < 0.26;
         pulse.lastProgress = progress;
         if (wrappedAtEnd) {
-          spawnLetterBlock(elapsed);
+          spawnLetterBlock(circuit, elapsed);
         }
         if (proximity > 0.58) {
           const jumpStep = THREE.MathUtils.lerp(0.028, 0.11, (proximity - 0.58) / 0.42);
@@ -634,6 +637,10 @@ function disposeScene() {
     for (const joint of circuit.joints) {
       joint.geometry.dispose();
     }
+    for (const block of circuit.blocks) {
+      removeLetterBlock(block, circuit.blockGroup);
+    }
+    circuit.blocks.length = 0;
     circuit.material.dispose();
     for (const pulse of circuit.pulses) {
       pulse.core.geometry.dispose();
