@@ -22,6 +22,7 @@ interface PulseMarker {
   flashRate: number;
   flashPhase: number;
   lastProgress: number;
+  initialized: boolean;
 }
 
 interface CircuitLine {
@@ -252,9 +253,9 @@ function layoutLetterBlocks(blocks: LetterBlock[]) {
     const col = i % BLOCK_COLS;
     const row = Math.floor(i / BLOCK_COLS) % BLOCK_ROWS;
     const layer = Math.floor(i / (BLOCK_COLS * BLOCK_ROWS));
-    const x = (col - (BLOCK_COLS - 1) * 0.5) * (BLOCK_SIZE + BLOCK_GAP);
+    const x = col * (BLOCK_SIZE + BLOCK_GAP);
     const y = row * (BLOCK_SIZE + BLOCK_GAP);
-    const z = layer * (BLOCK_SIZE * 0.78 + BLOCK_GAP * 0.6);
+    const z = BLOCK_SIZE * 0.56 + layer * (BLOCK_SIZE * 0.78 + BLOCK_GAP * 0.6);
     blocks[i].group.position.set(x, y, z);
   }
 }
@@ -349,7 +350,7 @@ function createCircuitFlow() {
       endpointDirection.normalize();
     }
     const blockGroup = new THREE.Group();
-    blockGroup.position.copy(endpoint).addScaledVector(endpointDirection, BLOCK_SIZE * 0.65);
+    blockGroup.position.copy(endpoint).addScaledVector(endpointDirection, BLOCK_SIZE * 0.06);
     blockGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), endpointDirection);
     group.add(blockGroup);
     const hue = rand(0.51, 0.57);
@@ -423,6 +424,7 @@ function createCircuitFlow() {
           flashRate: rand(5.2, 13.8),
           flashPhase: rand(0, Math.PI * 2),
           lastProgress: normalizedPhase,
+          initialized: false,
         });
       }
     }
@@ -521,10 +523,15 @@ function animate() {
       for (const pulse of circuit.pulses) {
         let progress = (elapsed * linePulseSpeed + pulse.phase) % 1;
         if (progress < 0) progress += 1;
-        const wrappedAtEnd = pulse.lastProgress > 0.74 && progress < 0.26;
-        pulse.lastProgress = progress;
-        if (wrappedAtEnd) {
-          spawnLetterBlock(circuit, elapsed);
+        if (!pulse.initialized) {
+          pulse.lastProgress = progress;
+          pulse.initialized = true;
+        } else {
+          const wrappedAtEnd = pulse.lastProgress > 0.9 && progress < 0.1;
+          pulse.lastProgress = progress;
+          if (wrappedAtEnd) {
+            spawnLetterBlock(circuit, elapsed);
+          }
         }
         if (proximity > 0.58) {
           const jumpStep = THREE.MathUtils.lerp(0.028, 0.11, (proximity - 0.58) / 0.42);
