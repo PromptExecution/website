@@ -28,6 +28,7 @@ interface GenerateComicScriptOptions {
 }
 
 const JSON_MODE_MODELS = new Set([
+  '@cf/qwen/qwen3-30b-a3b-fp8',
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
   '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
 ]);
