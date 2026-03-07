@@ -199,7 +199,7 @@ Every comic includes:
 
 ## License
 
-MIT License - See LICENSE file
+PATRON Multimedia License - See LICENSE file
 
 ## Credits
 

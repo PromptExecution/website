@@ -155,3 +155,8 @@ Useful commands:
 just architect-init "stabilize comic publish and voting flow"
 just architect-summary .agent-runs/run-YYYYMMDDTHHMMSSZ
 ```
+
+## License
+
+This project uses the PATRON Multimedia License.
+See `LICENSE`.
