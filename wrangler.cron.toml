@@ -28,9 +28,9 @@ binding = "COMICS_BUCKET"
 bucket_name = "llm-comics"
 
 [env.production.vars]
-IMAGE_MODEL_A = "@cf/bytedance/stable-diffusion-xl-lightning"
-IMAGE_MODEL_B = "@cf/black-forest-labs/flux-1-schnell"
-TOPIC_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+SCRIPT_MODEL_A = "@cf/qwen/qwen3-30b-a3b-fp8"
+SCRIPT_MODEL_B = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+TOPIC_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
 
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"

@@ -3,21 +3,27 @@
 
 import type { ComicScript } from './comic-generator.ts';
 
-const PANEL_WIDTH = 300;
-const PANEL_HEIGHT = 250;
-const PADDING = 20;
+const PANEL_WIDTH = 320;
+const PANEL_HEIGHT = 260;
+const PADDING = 18;
 
 export function renderComicToSVG(script: ComicScript): string {
-  const totalWidth = PANEL_WIDTH * 4 + PADDING * 5;
-  const totalHeight = PANEL_HEIGHT + PADDING * 3 + 60; // Extra for title
+  const panelCount = Math.max(1, script.panels.length);
+  const totalWidth = PANEL_WIDTH * panelCount + PADDING * (panelCount + 1);
+  const totalHeight = PANEL_HEIGHT + PADDING * 3 + 52;
 
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}">
   <defs>
     <style>
       .comic-text {
-        font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+        font-family: 'Trebuchet MS', 'Verdana', sans-serif;
         font-size: 14px;
         fill: black;
+      }
+      .caption-text {
+        font-family: 'Trebuchet MS', 'Verdana', sans-serif;
+        font-size: 12px;
+        fill: #333;
       }
       .robot-thought {
         font-family: 'Courier New', monospace;
@@ -46,14 +52,13 @@ export function renderComicToSVG(script: ComicScript): string {
   <rect width="${totalWidth}" height="${totalHeight}" fill="white"/>
 
   <!-- Title -->
-  <text x="${totalWidth / 2}" y="30" text-anchor="middle" class="comic-text" font-size="20" font-weight="bold">${escapeXml(script.title)}</text>
-  <text x="${totalWidth - 10}" y="${totalHeight - 10}" text-anchor="end" class="comic-text" font-size="10" fill="#999">Sponsored by Cloudflare ☁️</text>
+  <text x="${totalWidth / 2}" y="28" text-anchor="middle" class="comic-text" font-size="20" font-weight="bold">${escapeXml(script.title)}</text>
 `;
 
   // Render each panel
   script.panels.forEach((panel, i) => {
     const x = PADDING + i * (PANEL_WIDTH + PADDING);
-    const y = 60;
+    const y = 44;
 
     svg += renderPanel(panel, x, y, PANEL_WIDTH, PANEL_HEIGHT);
   });
@@ -68,26 +73,31 @@ function renderPanel(panel: any, x: number, y: number, width: number, height: nu
   <rect x="${x}" y="${y}" width="${width}" height="${height}" class="panel-border"/>
 `;
 
-  // Determine character type and draw stick figure
   const figX = x + width / 2;
-  const figY = y + height / 2;
+  const figY = y + height - 108;
+
+  if (panel.action) {
+    content += `<text x="${x + 14}" y="${y + 18}" class="caption-text">${escapeXml(panel.action)}</text>`;
+  }
 
   if (panel.speaker === 'robot') {
     content += drawRobotFigure(figX, figY - 30);
   } else if (panel.speaker === 'simon') {
     content += drawSimonFigure(figX, figY - 30);
+  } else if (panel.speaker === 'boss') {
+    content += drawBossFigure(figX, figY - 30);
+  } else if (panel.speaker === 'ferris') {
+    content += drawFerrisFigure(figX, figY + 10);
   } else {
     content += drawHumanFigure(figX, figY - 30);
   }
 
-  // Add dialogue bubble
   if (panel.dialogue) {
-    content += drawSpeechBubble(x + width / 2, y + 40, panel.dialogue, width - 40);
+    content += drawSpeechBubble(x + width / 2, y + 28, panel.dialogue, width - 34);
   }
 
-  // Add robot thought bubble (monospace)
   if (panel.robotThought) {
-    content += drawThoughtBubble(x + width / 2, y + 40, panel.robotThought, width - 40);
+    content += drawThoughtBubble(x + width / 2, y + 28, panel.robotThought, width - 34);
   }
 
   return content;
@@ -137,10 +147,37 @@ function drawSimonFigure(x: number, y: number): string {
 `;
 }
 
+function drawBossFigure(x: number, y: number): string {
+  return `
+  <!-- Boss -->
+  <circle cx="${x}" cy="${y}" r="15" stroke="black" stroke-width="2" fill="white"/>
+  <line x1="${x}" y1="${y + 15}" x2="${x}" y2="${y + 52}" stroke="black" stroke-width="2"/>
+  <line x1="${x}" y1="${y + 28}" x2="${x - 20}" y2="${y + 46}" stroke="black" stroke-width="2"/>
+  <line x1="${x}" y1="${y + 28}" x2="${x + 20}" y2="${y + 46}" stroke="black" stroke-width="2"/>
+  <line x1="${x - 4}" y1="${y + 20}" x2="${x}" y2="${y + 34}" stroke="black" stroke-width="1.5"/>
+  <line x1="${x + 4}" y1="${y + 20}" x2="${x}" y2="${y + 34}" stroke="black" stroke-width="1.5"/>
+  <line x1="${x}" y1="${y + 52}" x2="${x - 15}" y2="${y + 82}" stroke="black" stroke-width="2"/>
+  <line x1="${x}" y1="${y + 52}" x2="${x + 15}" y2="${y + 82}" stroke="black" stroke-width="2"/>
+`;
+}
+
+function drawFerrisFigure(x: number, y: number): string {
+  return `
+  <!-- Ferris -->
+  <ellipse cx="${x}" cy="${y}" rx="18" ry="12" stroke="black" stroke-width="2" fill="white"/>
+  <line x1="${x - 10}" y1="${y + 10}" x2="${x - 18}" y2="${y + 18}" stroke="black" stroke-width="2"/>
+  <line x1="${x - 4}" y1="${y + 10}" x2="${x - 8}" y2="${y + 20}" stroke="black" stroke-width="2"/>
+  <line x1="${x + 4}" y1="${y + 10}" x2="${x + 8}" y2="${y + 20}" stroke="black" stroke-width="2"/>
+  <line x1="${x + 10}" y1="${y + 10}" x2="${x + 18}" y2="${y + 18}" stroke="black" stroke-width="2"/>
+  <line x1="${x - 10}" y1="${y - 4}" x2="${x - 18}" y2="${y - 16}" stroke="black" stroke-width="2"/>
+  <line x1="${x + 10}" y1="${y - 4}" x2="${x + 18}" y2="${y - 16}" stroke="black" stroke-width="2"/>
+`;
+}
+
 function drawSpeechBubble(x: number, y: number, text: string, maxWidth: number): string {
-  const lines = wrapText(text, 30);
+  const lines = wrapText(text, 28);
   const bubbleHeight = lines.length * 16 + 20;
-  const bubbleWidth = Math.min(maxWidth, 200);
+  const bubbleWidth = Math.min(maxWidth, Math.max(150, longestLine(lines) * 7.2));
 
   return `
   <rect x="${x - bubbleWidth/2}" y="${y}" width="${bubbleWidth}" height="${bubbleHeight}" rx="10" class="bubble"/>
@@ -152,9 +189,9 @@ function drawSpeechBubble(x: number, y: number, text: string, maxWidth: number):
 }
 
 function drawThoughtBubble(x: number, y: number, text: string, maxWidth: number): string {
-  const lines = wrapText(text, 35);
+  const lines = wrapText(text, 30);
   const bubbleHeight = lines.length * 14 + 20;
-  const bubbleWidth = Math.min(maxWidth, 220);
+  const bubbleWidth = Math.min(maxWidth, Math.max(170, longestLine(lines) * 7));
 
   return `
   <rect x="${x - bubbleWidth/2}" y="${y}" width="${bubbleWidth}" height="${bubbleHeight}" rx="5" class="thought-bubble"/>
@@ -167,21 +204,32 @@ function drawThoughtBubble(x: number, y: number, text: string, maxWidth: number)
 }
 
 function wrapText(text: string, maxChars: number): string[] {
-  const words = text.split(' ');
   const lines: string[] = [];
-  let currentLine = '';
+  const paragraphs = text.split('\n');
 
-  for (const word of words) {
-    if ((currentLine + word).length > maxChars && currentLine.length > 0) {
+  for (const paragraph of paragraphs) {
+    const words = paragraph.split(' ');
+    let currentLine = '';
+
+    for (const word of words) {
+      if ((currentLine + word).length > maxChars && currentLine.length > 0) {
+        lines.push(currentLine.trim());
+        currentLine = `${word} `;
+      } else {
+        currentLine += `${word} `;
+      }
+    }
+
+    if (currentLine.trim()) {
       lines.push(currentLine.trim());
-      currentLine = word + ' ';
-    } else {
-      currentLine += word + ' ';
     }
   }
-  if (currentLine.trim()) lines.push(currentLine.trim());
 
-  return lines;
+  return lines.filter(Boolean);
+}
+
+function longestLine(lines: string[]): number {
+  return lines.reduce((max, line) => Math.max(max, line.length), 0);
 }
 
 function escapeXml(text: string): string {

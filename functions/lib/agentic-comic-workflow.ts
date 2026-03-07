@@ -1,9 +1,10 @@
 import { CAST, getCharacterById, pickCharactersExcluding, type CastCharacter } from './cast.ts';
-import { base64ToArrayBuffer } from './encoding.ts';
+import { generateComicScript, type ComicScript } from './comic-generator.ts';
+import { renderComicToSVG } from './svg-renderer.ts';
 
-const DEFAULT_IMAGE_MODEL_A = '@cf/bytedance/stable-diffusion-xl-lightning';
-const DEFAULT_IMAGE_MODEL_B = '@cf/black-forest-labs/flux-1-schnell';
-const DEFAULT_TOPIC_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const DEFAULT_SCRIPT_MODEL_A = '@cf/qwen/qwen3-30b-a3b-fp8';
+const DEFAULT_SCRIPT_MODEL_B = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const DEFAULT_TOPIC_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
 
 const FALLBACK_TOPICS = [
   'prompt injection incident in production',
@@ -17,19 +18,6 @@ const FALLBACK_TOPICS = [
   'SRE on-call handoff gone sideways',
   'passive aggressive status page update'
 ];
-
-const NEGATIVE_PROMPT = [
-  'photo realistic',
-  '3d render',
-  'oil painting',
-  'high saturation',
-  'blurry',
-  'extra limbs',
-  'text wall',
-  'watermark',
-  'logo',
-  'signature'
-].join(', ');
 
 export interface WorkflowStepLog {
   step: string;
@@ -91,67 +79,43 @@ export async function previewAgenticPromptPlan(env: any, options: { day: string;
 export async function runAgenticComicWorkflow(env: any, options: { day: string; force_topic?: string; trigger: 'cron' | 'manual'; }) {
   const workflowLog: WorkflowStepLog[] = [];
   const plan = await buildComicPlan(env, options, workflowLog);
-  const modelA = env.IMAGE_MODEL_A || DEFAULT_IMAGE_MODEL_A;
-  const modelB = env.IMAGE_MODEL_B || DEFAULT_IMAGE_MODEL_B;
-  const random = createSeededRng(hashToUInt32(`${plan.day}:${plan.run_id}:image-seeds`));
+  const modelA = env.SCRIPT_MODEL_A || env.COMIC_MODEL_A || env.IMAGE_MODEL_A || DEFAULT_SCRIPT_MODEL_A;
+  const modelB = env.SCRIPT_MODEL_B || env.COMIC_MODEL_B || env.IMAGE_MODEL_B || DEFAULT_SCRIPT_MODEL_B;
 
-  const seedA = randomInt(random, 1, 2_147_483_600);
-  const seedB = randomInt(random, 1, 2_147_483_600);
+  const variantA = await generateScriptVariant(env, modelA, plan, workflowLog, 'variant-a', 'prioritize the cleanest joke structure and readable dialogue.', modelB);
+  const variantB = await generateScriptVariant(env, modelB, plan, workflowLog, 'variant-b', 'prioritize sharper escalation and a meaner final punchline.', modelA);
 
-  const variantA = await generateImageVariant(env, modelA, plan.prompt_a, seedA, workflowLog, 'variant-a');
-  const variantB = await generateImageVariant(env, modelB, plan.prompt_b, seedB, workflowLog, 'variant-b', modelA);
-
-  const imageKeyA = `comics/${plan.day}/a.png`;
-  const imageKeyB = `comics/${plan.day}/b.png`;
+  const imageKeyA = `comics/${plan.day}/a.svg`;
+  const imageKeyB = `comics/${plan.day}/b.svg`;
   const artifactPrefix = `artifacts/${plan.day}/${plan.run_id}`;
+  const imageA = renderComicToSVG(variantA.script);
+  const imageB = renderComicToSVG(variantB.script);
 
   await Promise.all([
-    env.COMICS_BUCKET.put(imageKeyA, variantA.image, { httpMetadata: { contentType: 'image/png' } }),
-    env.COMICS_BUCKET.put(imageKeyB, variantB.image, { httpMetadata: { contentType: 'image/png' } }),
+    env.COMICS_BUCKET.put(imageKeyA, imageA, { httpMetadata: { contentType: 'image/svg+xml; charset=utf-8' } }),
+    env.COMICS_BUCKET.put(imageKeyB, imageB, { httpMetadata: { contentType: 'image/svg+xml; charset=utf-8' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/workflow-log.json`, JSON.stringify(workflowLog, null, 2), { httpMetadata: { contentType: 'application/json' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/cast.json`, JSON.stringify(plan.cast, null, 2), { httpMetadata: { contentType: 'application/json' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/topics.json`, JSON.stringify(plan.topic_candidates, null, 2), { httpMetadata: { contentType: 'application/json' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/prompt-a.txt`, plan.prompt_a, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }),
-    env.COMICS_BUCKET.put(`${artifactPrefix}/prompt-b.txt`, plan.prompt_b, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } })
+    env.COMICS_BUCKET.put(`${artifactPrefix}/prompt-b.txt`, plan.prompt_b, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/script-a.json`, JSON.stringify(variantA.script, null, 2), { httpMetadata: { contentType: 'application/json' } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/script-b.json`, JSON.stringify(variantB.script, null, 2), { httpMetadata: { contentType: 'application/json' } }),
   ]);
 
-  workflowLog.push(makeStep('persist-artifacts', 'ok', `Saved images and workflow artifacts to ${artifactPrefix}.`));
-
-  const scriptA = {
-    run_id: plan.run_id,
-    panel_count: plan.panel_count,
-    character_count: plan.character_count,
-    cast_ids: plan.cast.map((item) => item.id),
-    topic_candidates: plan.topic_candidates,
-    selected_topic: plan.selected_topic,
-    prompt: plan.prompt_a,
-    seed: seedA,
-    model: variantA.model
-  };
-
-  const scriptB = {
-    run_id: plan.run_id,
-    panel_count: plan.panel_count,
-    character_count: plan.character_count,
-    cast_ids: plan.cast.map((item) => item.id),
-    topic_candidates: plan.topic_candidates,
-    selected_topic: plan.selected_topic,
-    prompt: plan.prompt_b,
-    seed: seedB,
-    model: variantB.model
-  };
+  workflowLog.push(makeStep('persist-artifacts', 'ok', `Saved SVG comics and workflow artifacts to ${artifactPrefix}.`));
 
   await env.DB.prepare(
     'INSERT OR REPLACE INTO comics (day, prompt, model_a, model_b, r2_key_a, r2_key_b, script_a, script_b, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).bind(
     plan.day,
     plan.title,
-    variantA.model,
-    variantB.model,
+    variantA.script.model,
+    variantB.script.model,
     imageKeyA,
     imageKeyB,
-    JSON.stringify(scriptA),
-    JSON.stringify(scriptB),
+    JSON.stringify(variantA.script),
+    JSON.stringify(variantB.script),
     Math.floor(Date.now() / 1000)
   ).run();
 
@@ -171,8 +135,8 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     plan.selected_topic,
     plan.prompt_a,
     plan.prompt_b,
-    variantA.model,
-    variantB.model,
+    variantA.script.model,
+    variantB.script.model,
     imageKeyA,
     imageKeyB,
     `${artifactPrefix}/workflow-log.json`,
@@ -190,8 +154,8 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     cast: plan.cast,
     topic_candidates: plan.topic_candidates,
     selected_topic: plan.selected_topic,
-    model_a: variantA.model,
-    model_b: variantB.model,
+    model_a: variantA.script.model,
+    model_b: variantB.script.model,
     prompt_a: plan.prompt_a,
     prompt_b: plan.prompt_b,
     image_key_a: imageKeyA,
@@ -203,8 +167,8 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
       prompt_a: `${artifactPrefix}/prompt-a.txt`,
       prompt_b: `${artifactPrefix}/prompt-b.txt`
     },
-    script_a: scriptA,
-    script_b: scriptB,
+    script_a: variantA.script,
+    script_b: variantB.script,
     workflow_log: workflowLog
   } as ComicWorkflowResult;
 }
@@ -240,8 +204,8 @@ async function buildComicPlan(
     topic: selectedTopic
   });
 
-  const promptA = `${promptBase}\nVariant directive: prioritize crisp panel readability and dry technical humor.`;
-  const promptB = `${promptBase}\nVariant directive: prioritize absurd BOFH energy and unexpected visual punchline.`;
+  const promptA = `${promptBase}\nVariant directive: prioritize crisp setup, exact terminology, and readable punchlines.`;
+  const promptB = `${promptBase}\nVariant directive: prioritize sharper escalation, dry cruelty, and a stronger final reversal.`;
 
   workflowLog.push(makeStep('build-prompts', 'ok', 'Built standard image generation prompts for both variants.'));
 
@@ -272,7 +236,7 @@ async function suggestTopics(
     return fallback;
   }
 
-  const model = env.TOPIC_MODEL || DEFAULT_TOPIC_MODEL;
+  const model = env.TOPIC_MODEL || env.SCRIPT_MODEL_A || DEFAULT_TOPIC_MODEL;
   const systemPrompt = 'You are a technical humor prompt planner. Return JSON only: {"topics":["...", "...", "..."]}';
   const userPrompt = [
     `Create 3 concise comic topic candidates for an xkcd-style technical comic.`,
@@ -329,73 +293,37 @@ function pickFallbackTopics(random: () => number, cast: CastCharacter[]): string
   return selected;
 }
 
-async function generateImageVariant(
+async function generateScriptVariant(
   env: any,
   model: string,
-  prompt: string,
-  seed: number,
+  plan: ComicPlan,
   workflowLog: WorkflowStepLog[],
   stepName: string,
-  fallbackModel?: string
+  variantDirective: string,
+  fallbackModel?: string,
 ) {
   if (!env.AI) {
-    throw new Error('Workers AI binding is required for graphic generation.');
+    throw new Error('Workers AI binding is required for comic script generation.');
   }
 
   try {
-    const image = await generateImageWithModel(env.AI, model, prompt, seed);
-    workflowLog.push(makeStep(stepName, 'ok', `Generated image with ${model} (seed ${seed}).`));
-    return { image, model };
+    const script = await generateComicScript({
+      ai: env.AI,
+      model,
+      fallbackModel,
+      day: plan.day,
+      title: plan.title,
+      topic: plan.selected_topic,
+      panelCount: plan.panel_count,
+      cast: plan.cast,
+      variantDirective,
+    });
+    workflowLog.push(makeStep(stepName, 'ok', `Generated scripted SVG comic with ${script.model}.`));
+    return { script };
   } catch (err: any) {
-    if (!fallbackModel) {
-      workflowLog.push(makeStep(stepName, 'error', `Image generation failed on ${model}: ${err.message || String(err)}`));
-      throw err;
-    }
-
-    const fallbackImage = await generateImageWithModel(env.AI, fallbackModel, prompt, seed + 99);
-    const fallbackName = `${fallbackModel} (fallback for ${model})`;
-    workflowLog.push(makeStep(stepName, 'ok', `Model ${model} failed, used fallback ${fallbackName}.`));
-    return { image: fallbackImage, model: fallbackName };
+    workflowLog.push(makeStep(stepName, 'error', `Comic script generation failed on ${model}: ${err.message || String(err)}`));
+    throw err;
   }
-}
-
-async function generateImageWithModel(ai: any, model: string, prompt: string, seed: number): Promise<ArrayBuffer> {
-  const payload: Record<string, unknown> = {
-    prompt,
-    negative_prompt: NEGATIVE_PROMPT,
-    seed
-  };
-
-  if (model.includes('stable-diffusion-xl-lightning')) {
-    payload.width = 1344;
-    payload.height = 768;
-    payload.num_steps = 8;
-    payload.guidance = 4.5;
-  } else {
-    payload.width = 1344;
-    payload.height = 768;
-    payload.num_steps = 6;
-  }
-
-  const result = await ai.run(model, payload);
-  return normalizeImageOutput(result);
-}
-
-async function normalizeImageOutput(output: any): Promise<ArrayBuffer> {
-  if (!output) {
-    throw new Error('Model returned empty image payload.');
-  }
-
-  if (output instanceof ArrayBuffer) return output;
-  if (ArrayBuffer.isView(output)) return output.buffer.slice(output.byteOffset, output.byteOffset + output.byteLength);
-  if (output instanceof ReadableStream) return new Response(output).arrayBuffer();
-  if (typeof output === 'string') return base64ToArrayBuffer(output);
-
-  if (output.image) return base64ToArrayBuffer(output.image);
-  if (output.result?.image) return base64ToArrayBuffer(output.result.image);
-  if (typeof output.b64_json === 'string') return base64ToArrayBuffer(output.b64_json);
-
-  throw new Error('Unsupported image output shape from Workers AI.');
 }
 
 function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[]; topic: string; }): string {
@@ -407,11 +335,11 @@ function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[];
   )).join('\n');
 
   return [
-    'Create a graphic webcomic image, not plain text output.',
+    'Create a readable comic script that will be rendered to SVG.',
     'Series title: LLM DOES NOT COMPUTE.',
-    'Style: xkcd-inspired minimal black-and-white line art, hand-drawn stick figures, technical humor, precise panel readability.',
-    `Layout: exactly ${input.panelCount} panels in one horizontal strip with visible panel borders.`,
-    'Each panel should contain concise speech or thought bubbles as part of the drawing.',
+    'Style target: xkcd-inspired, dry systems humor, precise dialogue, no filler.',
+    `Layout: exactly ${input.panelCount} panels.`,
+    'Each panel should advance the joke and remain easy to typeset.',
     `Topic: ${input.topic}`,
     'Recurring cast bible:',
     '- The User is a plain round-head stick figure who asks vague, underspecified questions.',
@@ -423,13 +351,12 @@ function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[];
     castLines,
     'Scene requirements:',
     '- The strip must include both the User and the LLM Robot.',
-    '- Keep the robot internal monologue in a cloud-like thought bubble with monospace look.',
+    '- Keep the robot internal monologue compact and monospace-friendly.',
     '- Keep Simon deadpan if Simon is present.',
     '- Use dry systems-thinking humor about failure modes, architecture, operations, or specification gaps.',
-    '- Keep backgrounds minimal and technical (whiteboard, terminal, server rack hints).',
-    '- No full-color illustration; monochrome or near-monochrome only.',
-    '- No captions outside panels.',
-    '- No watermark, logo, signature, or unrelated text.'
+    '- Prefer concrete nouns: deploy, cache key, rollback, runbook, timeout, queue, incident.',
+    '- Avoid generic "AI is weird" jokes.',
+    '- No watermark, no sponsor copy, no unrelated text.'
   ].join('\n');
 }
 
@@ -471,18 +398,4 @@ function hashToUInt32(input: string): number {
     h = Math.imul(h, 16777619);
   }
   return h >>> 0;
-}
-
-function parseJsonFromText(raw: string): any {
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    try {
-      return JSON.parse(match[0]);
-    } catch {
-      return null;
-    }
-  }
 }

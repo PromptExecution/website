@@ -29,12 +29,15 @@ export async function onRequestPost(context: any) {
 
   try {
     const { runAgenticComicWorkflow, previewAgenticPromptPlan } = await import('../lib/agentic-comic-workflow.ts');
+    const { resetComicDay } = await import('../lib/comic-day-admin.ts');
     const reqUrl = new URL(request.url);
     const body = (await tryParseJson(request)) || {};
 
     const day = String(body.day || reqUrl.searchParams.get('day') || new Date().toISOString().split('T')[0]);
     const force = String(body.force || reqUrl.searchParams.get('force') || '0') === '1';
     const dryRun = String(body.dry_run || reqUrl.searchParams.get('dry_run') || '0') === '1';
+    const reset = String(body.reset || reqUrl.searchParams.get('reset') || '0') === '1';
+    const rebuild = String(body.rebuild || reqUrl.searchParams.get('rebuild') || '0') === '1' || force;
     const forceTopic = String(body.topic || reqUrl.searchParams.get('topic') || '').trim() || undefined;
     const keyA = `comics/${day}/a.png`;
     const keyB = `comics/${day}/b.png`;
@@ -48,7 +51,7 @@ export async function onRequestPost(context: any) {
       env.COMICS_BUCKET.head(legacyKeyA),
       env.COMICS_BUCKET.head(legacyKeyB),
     ]);
-    if (!force && (existingA || existingB || existingLegacyA || existingLegacyB)) {
+    if (!force && !reset && !rebuild && (existingA || existingB || existingLegacyA || existingLegacyB)) {
       return Response.json({
         error: 'Comic object already exists for today',
         day,
@@ -68,6 +71,20 @@ export async function onRequestPost(context: any) {
         day,
         message: 'Generated agentic prompt plan without image generation.',
         plan
+      });
+    }
+
+    let resetResult: any = null;
+    if (reset || rebuild) {
+      resetResult = await resetComicDay(env, day);
+    }
+
+    if (reset && !rebuild) {
+      return Response.json({
+        success: true,
+        day,
+        reset: resetResult,
+        message: 'Comic day reset successfully.'
       });
     }
 
@@ -97,7 +114,8 @@ export async function onRequestPost(context: any) {
       },
       artifact_keys: result.artifact_keys,
       workflow_log: result.workflow_log,
-      message: 'Graphic comic generated successfully via agentic workflow. Visit /api/today to see it.'
+      reset: resetResult,
+      message: 'Comic rebuilt successfully via scripted SVG workflow. Visit /api/today to see it.'
     });
 
   } catch (err: any) {
@@ -113,12 +131,13 @@ export async function onRequestPost(context: any) {
 // Also support GET for easier testing
 export async function onRequestGet(context: any) {
   return Response.json({
-    message: 'Agentic graphic comic generation endpoint',
+    message: 'Agentic comic rebuild endpoint',
     method: 'POST',
     auth: 'Authorization: Bearer <TEST_SECRET>',
     examples: [
       'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" https://your-site.com/api/test-generate',
-      'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" -H "Content-Type: application/json" -d \'{"topic":"cache invalidation incident","force":"1"}\' https://your-site.com/api/test-generate',
+      'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" -H "Content-Type: application/json" -d \'{"topic":"cache invalidation incident","rebuild":"1"}\' https://your-site.com/api/test-generate',
+      'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" -H "Content-Type: application/json" -d \'{"day":"2026-03-06","reset":"1","rebuild":"1"}\' https://your-site.com/api/test-generate',
       'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" -H "Content-Type: application/json" -d \'{"dry_run":"1"}\' https://your-site.com/api/test-generate'
     ]
   });
