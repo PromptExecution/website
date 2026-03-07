@@ -1,41 +1,55 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref, onMounted } from 'vue';
+import { defineAsyncComponent, ref, onMounted, onUnmounted, computed } from 'vue';
 
-const SHOW_COMIC_ENGINE = false;
+const COMIC_FLAG_KEY = 'pe:comic-enabled';
 
 const ComicViewer = defineAsyncComponent(() => import('./ComicViewer.vue'));
 const ComicArchive = defineAsyncComponent(() => import('./ComicArchive.vue'));
 const PushSubscribe = defineAsyncComponent(() => import('./PushSubscribe.vue'));
 const TheXTerm = defineAsyncComponent(() => import('./TheXTerm.vue'));
 
-const defaultTab = SHOW_COMIC_ENGINE ? 'comic' : 'archive';
-const activeTab = ref(defaultTab);
+const showComicEngine = ref(false);
+const activeTab = ref('archive');
 const selectedDay = ref<string | undefined>(undefined);
 
-const tabs = [
-  ...(SHOW_COMIC_ENGINE ? [{ id: 'comic', label: 'Comic' }] : []),
+const tabs = computed(() => [
+  ...(showComicEngine.value ? [{ id: 'comic', label: 'Comic' }] : []),
   { id: 'archive', label: 'Archive' },
   { id: 'subscribe', label: 'Subscribe' },
   { id: 'cli', label: 'CLI' }
-];
+]);
+
+const handleEnableComicEvent = () => {
+  showComicEngine.value = true;
+  activeTab.value = 'comic';
+};
 
 onMounted(() => {
+  showComicEngine.value = localStorage.getItem(COMIC_FLAG_KEY) === 'true';
+  activeTab.value = showComicEngine.value ? 'comic' : 'archive';
+
   const params = new URLSearchParams(window.location.search);
   const tab = params.get('tab');
   const day = params.get('day');
 
-  if (tab && tabs.some(t => t.id === tab)) {
+  if (tab && tabs.value.some(t => t.id === tab)) {
     activeTab.value = tab;
   }
-  if (SHOW_COMIC_ENGINE && day) {
+  if (showComicEngine.value && day) {
     selectedDay.value = day;
     activeTab.value = 'comic';
   }
+
+  window.addEventListener('pe-enable-comic', handleEnableComicEvent);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('pe-enable-comic', handleEnableComicEvent);
 });
 </script>
 
 <template>
-  <div v-if="SHOW_COMIC_ENGINE" class="window comic-window">
+  <div v-if="showComicEngine" class="window comic-window">
     <div class="title-bar">
       <div class="title-bar-text">LLM DOES NOT COMPUTE - promptexecution.com</div>
       <div class="title-bar-controls">
@@ -59,7 +73,7 @@ onMounted(() => {
 
       <div class="tab-content">
         <ComicViewer
-          v-if="SHOW_COMIC_ENGINE && activeTab === 'comic'"
+          v-if="showComicEngine && activeTab === 'comic'"
           :day="selectedDay"
           @request-tab="activeTab = $event"
         />

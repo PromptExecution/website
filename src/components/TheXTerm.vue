@@ -43,6 +43,12 @@ let idleTimer: number | undefined;
 const idleDelay = 2500; // 5 seconds
 
 const TerminalApiInstance = TerminalApi as any as TerminalApi;
+const COMIC_FLAG_KEY = 'pe:comic-enabled';
+
+const enableComicEngine = () => {
+  localStorage.setItem(COMIC_FLAG_KEY, 'true');
+  window.dispatchEvent(new CustomEvent('pe-enable-comic'));
+};
 
 const resetAndStartIdleTimer = () => {
   clearTimeout(idleTimer);
@@ -225,6 +231,15 @@ const onExecCmd = (
       content: '<a href="https://calendar.google.com/calendar/appointments/schedules/AcZssZ1PPmxcLlDdPZF1BMHQaADaO7or9b7sXrljq7co6Fu3bZLO9x_YmzH8JkynDEwzSrgdqh5Y-4s1">calendar</a>'
     })
   }
+  else if (key === "😁") {
+    enableComicEngine();
+    success({
+      type: 'normal',
+      class: 'success',
+      tag: '✅',
+      content: 'Comic engine enabled.'
+    })
+  }
   else {
     let allClass = ['success', 'error', 'system', 'info', 'warning'];
     let clazz = allClass[Math.floor(Math.random() * allClass.length)];
@@ -280,6 +295,25 @@ const commandStore = [
     exec: () => {
       // open a popup to the calendar
       //
+    }
+  },
+  {
+    key: '😁',
+    title: 'Enable comic mode.',
+    usage: '😁',
+    example: [
+      {
+        cmd: '😁',
+        des: 'Switch from CLI-only mode to Comic mode.',
+      }
+    ],
+    exec: () => {
+      enableComicEngine();
+      TerminalApiInstance.pushMessage("my-terminal",{
+        type: 'normal',
+        class: 'success',
+        content: 'Comic engine enabled.',
+      })
     }
   }
 ]
