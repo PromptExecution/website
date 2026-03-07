@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 type BackgroundMode = 'circuit' | 'legacy';
 
@@ -20,6 +21,7 @@ interface PulseMarker {
   phase: number;
   flashRate: number;
   flashPhase: number;
+  lastProgress: number;
 }
 
 interface CircuitLine {
@@ -33,6 +35,13 @@ interface CircuitLine {
   speedFactor: number;
   depthOffset: number;
   baseThickness: number;
+}
+
+interface LetterBlock {
+  group: THREE.Group;
+  labelTexture: THREE.CanvasTexture;
+  labelMaterial: THREE.MeshBasicMaterial;
+  bornAt: number;
 }
 
 let scene: THREE.Scene | null = null;
@@ -57,13 +66,27 @@ const CENTER_DEPTH = -74;
 const CIRCUIT_COUNT = 68;
 const PULSE_SPEED_BASE = 0.032;
 const PULSE_SPEED_FLOW_GAIN = 0.0022;
+const BLOCK_SEQUENCE = 'PROMPTEXECUTION';
+const BLOCK_COLS = 8;
+const BLOCK_ROWS = 3;
+const BLOCK_SIZE = 2.5;
+const BLOCK_GAP = 0.26;
+const MAX_BLOCKS = BLOCK_COLS * BLOCK_ROWS * 4;
 
 const PIPE_AXIS = new THREE.Vector3(0, 1, 0);
 const cameraToGroup = new THREE.Vector3();
 const colorNear = new THREE.Color(0xc8ffff);
 const focalPoint = new THREE.Vector3(0, 0, 0);
 const focalTarget = new THREE.Vector3(0, 0, 0);
+const cameraLookTarget = new THREE.Vector3(0, 0, 0);
+const blockGeometry = new RoundedBoxGeometry(1, 1, 1, 5, 0.2);
+const blockLabelGeometry = new THREE.PlaneGeometry(0.62, 0.62);
+const blockAssemblyOffset = new THREE.Vector3(0, -19, CENTER_DEPTH + 26);
+const blockLookAt = new THREE.Vector3();
 let flowTravel = 0;
+let blockAssemblyGroup: THREE.Group | null = null;
+let blockCursor = 0;
+const letterBlocks: LetterBlock[] = [];
 
 function rand(min: number, max: number) {
   return min + Math.random() * (max - min);
@@ -177,6 +200,115 @@ function createPipeSegment(start: THREE.Vector3, end: THREE.Vector3, material: T
   return mesh;
 }
 
+function createLetterTexture(letter: string) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#fff6a5';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#2a2300';
+    ctx.font = 'bold 86px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(letter, canvas.width / 2, canvas.height / 2 + 2);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createLetterBlock(letter: string, bornAt: number): LetterBlock {
+  const group = new THREE.Group();
+  const blockMesh = new THREE.Mesh(
+    blockGeometry,
+    new THREE.MeshStandardMaterial({
+      color: 0xffde4f,
+      emissive: 0x9c7300,
+      emissiveIntensity: 0.24,
+      metalness: 0.09,
+      roughness: 0.46,
+    }),
+  );
+  blockMesh.scale.setScalar(BLOCK_SIZE);
+  group.add(blockMesh);
+
+  const labelTexture = createLetterTexture(letter);
+  const labelMaterial = new THREE.MeshBasicMaterial({
+    map: labelTexture,
+    transparent: true,
+    depthWrite: false,
+  });
+  const label = new THREE.Mesh(blockLabelGeometry, labelMaterial);
+  label.scale.setScalar(BLOCK_SIZE * 0.95);
+  label.position.set(0, 0, BLOCK_SIZE * 0.515);
+  group.add(label);
+
+  return { group, labelTexture, labelMaterial, bornAt };
+}
+
+function layoutLetterBlocks() {
+  for (let i = 0; i < letterBlocks.length; i += 1) {
+    const col = i % BLOCK_COLS;
+    const row = Math.floor(i / BLOCK_COLS) % BLOCK_ROWS;
+    const layer = Math.floor(i / (BLOCK_COLS * BLOCK_ROWS));
+    const x = (col - (BLOCK_COLS - 1) * 0.5) * (BLOCK_SIZE + BLOCK_GAP);
+    const y = row * (BLOCK_SIZE + BLOCK_GAP);
+    const z = layer * (BLOCK_SIZE * 0.78 + BLOCK_GAP * 0.6);
+    letterBlocks[i].group.position.set(x, y, z);
+  }
+}
+
+function removeLetterBlock(block: LetterBlock) {
+  if (!blockAssemblyGroup) return;
+  blockAssemblyGroup.remove(block.group);
+  for (const child of block.group.children) {
+    const mesh = child as THREE.Mesh;
+    if (mesh.material && !(Array.isArray(mesh.material))) {
+      if (mesh.material !== block.labelMaterial) {
+        mesh.material.dispose();
+      }
+    }
+  }
+  block.labelMaterial.dispose();
+  block.labelTexture.dispose();
+}
+
+function spawnLetterBlock(elapsed: number) {
+  if (!scene || !blockAssemblyGroup) return;
+  const letter = BLOCK_SEQUENCE[blockCursor % BLOCK_SEQUENCE.length];
+  blockCursor += 1;
+  const block = createLetterBlock(letter, elapsed);
+  block.group.scale.setScalar(0.14);
+  blockAssemblyGroup.add(block.group);
+  letterBlocks.push(block);
+  if (letterBlocks.length > MAX_BLOCKS) {
+    const oldest = letterBlocks.shift();
+    if (oldest) {
+      removeLetterBlock(oldest);
+    }
+  }
+  layoutLetterBlocks();
+}
+
+function updateLetterBlocks(elapsed: number) {
+  if (!blockAssemblyGroup || !camera) return;
+
+  blockAssemblyGroup.position.copy(focalPoint).add(blockAssemblyOffset);
+  blockLookAt.copy(camera.position);
+  blockAssemblyGroup.lookAt(blockLookAt);
+  blockAssemblyGroup.rotateY(Math.PI);
+
+  for (const block of letterBlocks) {
+    const age = elapsed - block.bornAt;
+    const grow = THREE.MathUtils.clamp(age * 5.4, 0, 1);
+    const bounce = grow < 1 ? 1 + Math.sin(grow * Math.PI * 2.3) * 0.11 * (1 - grow) : 1;
+    block.group.scale.setScalar(grow * bounce);
+  }
+}
+
 function addCenterHole() {
   if (!scene) return;
 
@@ -212,6 +344,9 @@ function addCenterHole() {
 
 function createCircuitFlow() {
   if (!scene) return;
+
+  blockAssemblyGroup = new THREE.Group();
+  scene.add(blockAssemblyGroup);
 
   for (let i = 0; i < CIRCUIT_COUNT; i += 1) {
     const pathPoints = createOrthogonalPath();
@@ -280,12 +415,14 @@ function createCircuitFlow() {
 
         group.add(core);
         group.add(aura);
+        const normalizedPhase = (((headPhase - k * sequenceGap) % 1) + 1) % 1;
         pulses.push({
           core,
           aura,
-          phase: headPhase - k * sequenceGap,
+          phase: normalizedPhase,
           flashRate: rand(5.2, 13.8),
           flashPhase: rand(0, Math.PI * 2),
+          lastProgress: normalizedPhase,
         });
       }
     }
@@ -349,10 +486,11 @@ function animate() {
   pointerParallax.lerp(pointerTarget, 0.035);
   focalTarget.set(pointerTarget.x * 30, pointerTarget.y * 18, 0);
   focalPoint.lerp(focalTarget, 0.1);
-  camera.position.x = pointerParallax.x * 2.4;
-  camera.position.y = pointerParallax.y * 1.8;
+  camera.position.x = pointerParallax.x * 2.8;
+  camera.position.y = 0;
   camera.position.z = 72;
-  camera.lookAt(focalPoint);
+  cameraLookTarget.set(focalPoint.x * 1.12, 0, CENTER_DEPTH * 0.26);
+  camera.lookAt(cameraLookTarget);
 
   if (BACKGROUND_MODE === 'circuit') {
     for (const circuit of circuits) {
@@ -380,6 +518,11 @@ function animate() {
       for (const pulse of circuit.pulses) {
         let progress = (elapsed * linePulseSpeed + pulse.phase) % 1;
         if (progress < 0) progress += 1;
+        const wrappedAtEnd = progress < pulse.lastProgress;
+        pulse.lastProgress = progress;
+        if (wrappedAtEnd) {
+          spawnLetterBlock(elapsed);
+        }
         if (proximity > 0.58) {
           const jumpStep = THREE.MathUtils.lerp(0.028, 0.11, (proximity - 0.58) / 0.42);
           progress = Math.round(progress / jumpStep) * jumpStep;
@@ -418,6 +561,7 @@ function animate() {
     if (centerHole) {
       centerHole.position.set(focalPoint.x, focalPoint.y, CENTER_DEPTH);
     }
+    updateLetterBlocks(elapsed);
   } else if (legacyStars) {
     legacyStars.rotation.y += delta * 0.03;
     legacyStars.rotation.x = Math.sin(elapsed * 0.08) * 0.08;
