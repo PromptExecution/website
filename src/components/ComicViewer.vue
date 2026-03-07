@@ -165,14 +165,126 @@ function buildLocalMockComic(day?: string): ComicData {
 }
 
 function buildMockSvgDataUrl(lines: string[]) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="700" height="420">
-    <rect width="100%" height="100%" fill="white" stroke="black"/>
-    <text x="24" y="44" font-size="22" font-family="Courier New, monospace">LLM DOES NOT COMPUTE (Local)</text>
-    ${lines.map((line, index) =>
-      `<text x="24" y="${95 + index * 70}" font-size="20" font-family="Courier New, monospace">${escapeXml(line)}</text>`
-    ).join('')}
+  const width = 700;
+  const height = 420;
+  const panelWidth = 310;
+  const panelHeight = 138;
+  const gap = 18;
+  const startX = 24;
+  const startY = 64;
+  const rng = createMockRng(lines.join('|'));
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <rect width="100%" height="100%" fill="white"/>
+    <text x="350" y="30" text-anchor="middle" font-size="22" font-weight="700" font-family="'Chalkboard SE', 'Comic Sans MS', 'Trebuchet MS', sans-serif" fill="#111">LLM DOES NOT COMPUTE (Local)</text>
+    <path d="${mockRoughLinePath(180, 38, 520, 39, rng)}" fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+    ${lines.map((line, index) => {
+      const column = index % 2;
+      const row = Math.floor(index / 2);
+      const x = startX + column * (panelWidth + gap);
+      const y = startY + row * (panelHeight + gap);
+      const textLines = mockWrapText(line, 28).slice(0, 3);
+      const text = textLines.map((textLine, textIndex) => (
+        `<text x="${x + panelWidth / 2}" y="${y + 44 + textIndex * 22}" text-anchor="middle" font-size="18" font-family="'Chalkboard SE', 'Comic Sans MS', 'Trebuchet MS', sans-serif" fill="#111">${escapeXml(textLine)}</text>`
+      )).join('');
+
+      return `
+        <path d="${mockRoughRectPath(x, y, panelWidth, panelHeight, rng)}" fill="white" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="${mockRoughRectPath(x + mockJitter(rng, 1.1), y + mockJitter(rng, 1.1), panelWidth, panelHeight, rng)}" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" opacity="0.78"/>
+        ${text}
+      `;
+    }).join('')}
   </svg>`;
   return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`;
+}
+
+function mockWrapText(text: string, maxChars: number) {
+  const words = text.split(' ').filter(Boolean);
+  const lines: string[] = [];
+  let current = '';
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines;
+}
+
+function mockRoughRectPath(x: number, y: number, width: number, height: number, rng: () => number) {
+  const points = [
+    [x + mockJitter(rng, 2), y + mockJitter(rng, 2)],
+    [x + width * 0.5 + mockJitter(rng, 1.2), y + mockJitter(rng, 2)],
+    [x + width + mockJitter(rng, 2), y + mockJitter(rng, 2)],
+    [x + width + mockJitter(rng, 2), y + height * 0.5 + mockJitter(rng, 1.2)],
+    [x + width + mockJitter(rng, 2), y + height + mockJitter(rng, 2)],
+    [x + width * 0.48 + mockJitter(rng, 1.2), y + height + mockJitter(rng, 2)],
+    [x + mockJitter(rng, 2), y + height + mockJitter(rng, 2)],
+    [x + mockJitter(rng, 2), y + height * 0.52 + mockJitter(rng, 1.2)],
+  ];
+  return mockCurvePath(points, true);
+}
+
+function mockRoughLinePath(x1: number, y1: number, x2: number, y2: number, rng: () => number) {
+  const points = [
+    [x1 + mockJitter(rng, 0.8), y1 + mockJitter(rng, 0.8)],
+    [(x1 + x2) * 0.33 + mockJitter(rng, 1.4), (y1 + y2) * 0.33 + mockJitter(rng, 1.2)],
+    [(x1 + x2) * 0.66 + mockJitter(rng, 1.3), (y1 + y2) * 0.66 + mockJitter(rng, 1.1)],
+    [x2 + mockJitter(rng, 0.8), y2 + mockJitter(rng, 0.8)],
+  ];
+  return mockCurvePath(points, false);
+}
+
+function mockCurvePath(points: number[][], closed: boolean) {
+  if (closed) {
+    let d = '';
+    for (let index = 0; index < points.length; index += 1) {
+      const previous = points[(index - 1 + points.length) % points.length];
+      const current = points[index];
+      const next = points[(index + 1) % points.length];
+      const start = [(previous[0] + current[0]) / 2, (previous[1] + current[1]) / 2];
+      const end = [(current[0] + next[0]) / 2, (current[1] + next[1]) / 2];
+      d += index === 0
+        ? `M ${start[0].toFixed(2)} ${start[1].toFixed(2)} Q ${current[0].toFixed(2)} ${current[1].toFixed(2)} ${end[0].toFixed(2)} ${end[1].toFixed(2)}`
+        : ` Q ${current[0].toFixed(2)} ${current[1].toFixed(2)} ${end[0].toFixed(2)} ${end[1].toFixed(2)}`;
+    }
+    return `${d} Z`;
+  }
+
+  let d = `M ${points[0][0].toFixed(2)} ${points[0][1].toFixed(2)}`;
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    const end = [(current[0] + next[0]) / 2, (current[1] + next[1]) / 2];
+    d += ` Q ${current[0].toFixed(2)} ${current[1].toFixed(2)} ${end[0].toFixed(2)} ${end[1].toFixed(2)}`;
+  }
+  const last = points[points.length - 1];
+  return `${d} T ${last[0].toFixed(2)} ${last[1].toFixed(2)}`;
+}
+
+function createMockRng(seedText: string) {
+  let state = 2166136261;
+  for (let index = 0; index < seedText.length; index += 1) {
+    state ^= seedText.charCodeAt(index);
+    state = Math.imul(state, 16777619);
+  }
+
+  return () => {
+    state += 0x6D2B79F5;
+    let result = Math.imul(state ^ (state >>> 15), 1 | state);
+    result ^= result + Math.imul(result ^ (result >>> 7), 61 | result);
+    return ((result ^ (result >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function mockJitter(rng: () => number, amount: number) {
+  return (rng() - 0.5) * amount * 2;
 }
 
 function escapeXml(text: string) {
