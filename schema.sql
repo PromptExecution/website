@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS workflow_runs (
     image_key_a TEXT NOT NULL,
     image_key_b TEXT NOT NULL,
     artifact_log_key TEXT NOT NULL,
+    audit_log TEXT,                     -- Ledgrrr audit entry as JSON
     created_at INTEGER NOT NULL
 );
 

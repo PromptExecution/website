@@ -1,0 +1,37 @@
+{
+  "name": "@promptexecution/ledgrrr-wasm",
+  "version": "1.8.1",
+  "description": "Ledgrrr workflow compilation to WASM - Rhai, Mermaid, Rust enum generation",
+  "main": "ledger_workflow_wasm.js",
+  "types": "ledger_workflow_wasm.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.ts",
+      "types": "./ledger_workflow_wasm.d.ts"
+    },
+    "./raw": {
+      "import": "./ledger_workflow_wasm.js",
+      "types": "./ledger_workflow_wasm.d.ts"
+    }
+  },
+  "files": [
+    "ledger_workflow_wasm.js",
+    "ledger_workflow_wasm.d.ts",
+    "ledger_workflow_wasm_bg.wasm",
+    "ledger_workflow_wasm_bg.wasm.d.ts",
+    "index.ts",
+    "README.md"
+  ],
+  "keywords": [
+    "workflow",
+    "ledgrrr",
+    "wasm",
+    "rhai",
+    "mermaid",
+    "state-machine",
+    "rust",
+    "webassembly"
+  ],
+  "author": "ledgrrr contributors",
+  "license": "MIT"
+}

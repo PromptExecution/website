@@ -4,6 +4,10 @@
  *
  * Triggers A/B variant image generation from comic script
  * Pipeline: Script → SVG Description → Image Rendering
+ *
+ * Integrates ledgrrr workflows for:
+ * - Image rendering governance and audit tracking
+ * - Forecasting and logging metrics
  */
 
 import { isValidDay } from '../lib/comic-response.ts';
@@ -14,6 +18,7 @@ import {
   getAvailableProviders,
 } from '../lib/image-providers.ts';
 import { generateVariantPrompts } from '../lib/svg-prompt-generator.ts';
+import { invokeWorkflow } from '../lib/ledgrrr-mcp-client.ts';
 
 export async function onRequestPost(context: any) {
   const { request, env } = context;
@@ -135,6 +140,24 @@ export async function onRequestPost(context: any) {
       );
     }
 
+    // === Image Rendering Governance (Ledgrrr) ===
+    let auditImageResult: any = null;
+    try {
+      auditImageResult = await invokeWorkflow('image_rendering', {
+        script_a: script.variant_a || script.a || '',
+        script_b: script.variant_b || script.b || '',
+        image_a_path: `pending/${day}/variant-a.jpg`,
+        image_b_path: `pending/${day}/variant-b.jpg`,
+      });
+
+      if (!auditImageResult.success && auditImageResult.error) {
+        console.warn('[image-generate] Image rendering audit failed (non-blocking):', auditImageResult.error);
+      }
+    } catch (err: any) {
+      console.warn('[image-generate] Image rendering governance error (non-blocking):', err.message);
+      // Graceful degradation: continue without ledgrrr if unavailable
+    }
+
     // === Store in R2 ===
     const r2Keys = {
       imageA: null as string | null,
@@ -157,16 +180,49 @@ export async function onRequestPost(context: any) {
       r2Keys.imageB = keyB;
     }
 
+    // === Forecasting & Logging (Ledgrrr) ===
+    let auditForecastResult: any = null;
+    try {
+      // Calculate image quality scores (placeholder metrics)
+      const imageQualityA = images.imageA ? 0.85 : 0;
+      const imageQualityB = images.imageB ? 0.82 : 0;
+      const imageASize = images.imageA?.imageBuffer?.byteLength || 0;
+      const imageBSize = images.imageB?.imageBuffer?.byteLength || 0;
+
+      auditForecastResult = await invokeWorkflow('forecasting_and_log', {
+        image_a_path: r2Keys.imageA || '',
+        image_b_path: r2Keys.imageB || '',
+        variant_a_score: imageQualityA,
+        variant_b_score: imageQualityB,
+        day: day,
+        metrics: {
+          script_length_a: (script.variant_a || script.a || '').length,
+          script_length_b: (script.variant_b || script.b || '').length,
+          image_size_a: imageASize,
+          image_size_b: imageBSize,
+        },
+      });
+
+      if (!auditForecastResult.success && auditForecastResult.error) {
+        console.warn('[image-generate] Forecasting audit failed (non-blocking):', auditForecastResult.error);
+      }
+    } catch (err: any) {
+      console.warn('[image-generate] Forecasting governance error (non-blocking):', err.message);
+      // Graceful degradation: continue without ledgrrr if unavailable
+    }
+
     // === Save to database ===
     await env.DB.prepare(
       `
-      INSERT INTO comics (day, r2_key_a, r2_key_b, model_provider_a, model_provider_b)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO comics (day, r2_key_a, r2_key_b, model_provider_a, model_provider_b, audit_log_render, audit_log_forecast)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(day) DO UPDATE SET
         r2_key_a = COALESCE(?, r2_key_a),
         r2_key_b = COALESCE(?, r2_key_b),
         model_provider_a = ?,
-        model_provider_b = ?
+        model_provider_b = ?,
+        audit_log_render = ?,
+        audit_log_forecast = ?
     `
     )
       .bind(
@@ -175,10 +231,14 @@ export async function onRequestPost(context: any) {
         r2Keys.imageB,
         env.IMAGE_PROVIDER_A || 'unknown',
         env.IMAGE_PROVIDER_B || 'unknown',
+        auditImageResult ? JSON.stringify(auditImageResult.audit_entry) : null,
+        auditForecastResult ? JSON.stringify(auditForecastResult.audit_entry) : null,
         r2Keys.imageA,
         r2Keys.imageB,
         env.IMAGE_PROVIDER_A || 'unknown',
-        env.IMAGE_PROVIDER_B || 'unknown'
+        env.IMAGE_PROVIDER_B || 'unknown',
+        auditImageResult ? JSON.stringify(auditImageResult.audit_entry) : null,
+        auditForecastResult ? JSON.stringify(auditForecastResult.audit_entry) : null
       )
       .run();
 
@@ -194,6 +254,20 @@ export async function onRequestPost(context: any) {
       models: {
         renderer: renderer.constructor.name,
         promptsGenerated: true,
+      },
+      audit_trail: {
+        image_rendering: auditImageResult ? {
+          success: auditImageResult.success,
+          entry_id: auditImageResult.audit_entry?.entry_id,
+          timestamp: auditImageResult.audit_entry?.timestamp,
+          status: auditImageResult.audit_entry?.status,
+        } : null,
+        forecasting_and_log: auditForecastResult ? {
+          success: auditForecastResult.success,
+          entry_id: auditForecastResult.audit_entry?.entry_id,
+          timestamp: auditForecastResult.audit_entry?.timestamp,
+          status: auditForecastResult.audit_entry?.status,
+        } : null,
       },
     });
   } catch (err: any) {

@@ -1,0 +1,32 @@
+[b00t]
+name = "ledgrrr"
+type = "cli"
+hint = "Process control ledger — orchestrates workflow stages, validates decisions, logs audit trails. For comic-generation-pipeline: coordinates script→image→quality decisions with codebase intelligence."
+
+detect = [
+    "test -f /home/brianh/.b00t/vendor/l3dg3rr/Cargo.toml",
+    "echo '0.1.0-proto'",
+]
+version_regex = '(?P<version>[\\d.]+)'
+desires = "0.1.0-proto"
+repo = "PromptExecution/l3dg3rr"
+
+# Transport: gRPC with Apache Arrow DataFrames for structured records
+[b00t.providers.transport]
+protocol = "grpc"
+data_format = "apache-arrow"
+discovery_port = 0
+connect_timeout_sec = 5
+stream_type = "dataframe"
+
+# Process logging: audit trail for workflow decisions
+# Eventually persists to SQL (D1/PostgreSQL)
+[b00t.providers.logging]
+format = "json"
+temporal_store = "in-memory"
+schema = "audit_trail"
+
+# Workflow visualization: generate Mermaid state machines
+[b00t.providers.visualization]
+format = "mermaid"
+output_type = "state-machine"

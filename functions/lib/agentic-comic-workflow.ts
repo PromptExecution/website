@@ -1,6 +1,7 @@
 import { CAST, getCharacterById, pickCharactersExcluding, type CastCharacter } from './cast.ts';
 import { generateComicScript, type ComicScript } from './comic-generator.ts';
 import { renderComicToSVG } from './svg-renderer.ts';
+import { invokeWorkflow, type AuditEntry } from './ledgrrr-mcp-client.ts';
 
 const DEFAULT_SCRIPT_MODEL_A = '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b';
 const DEFAULT_SCRIPT_MODEL_B = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
@@ -52,6 +53,7 @@ export interface ComicWorkflowResult {
   script_a: Record<string, unknown>;
   script_b: Record<string, unknown>;
   imageGenerationStatus?: 'pending' | 'success' | 'failed' | 'error';
+  audit_trail?: AuditEntry;
   workflow_log: WorkflowStepLog[];
 }
 
@@ -120,11 +122,33 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     Math.floor(Date.now() / 1000)
   ).run();
 
+  let auditTrail: AuditEntry | undefined;
+
+  // Invoke ledgrrr for governance/audit tracking
+  try {
+    const auditResult = await invokeWorkflow('script_generation', {
+      script_a: variantA.script,
+      script_b: variantB.script,
+      topic: plan.selected_topic,
+      cast: plan.cast
+    });
+
+    if (auditResult.success) {
+      auditTrail = auditResult.audit_entry;
+      workflowLog.push(makeStep('ledgrrr-audit', 'ok', `Audit entry created: ${auditTrail.entry_id}`));
+    } else {
+      workflowLog.push(makeStep('ledgrrr-audit', 'error', `Ledgrrr invocation failed: ${auditResult.error || 'unknown error'}`));
+    }
+  } catch (err: any) {
+    // Graceful degradation: ledgrrr unavailable doesn't block workflow
+    workflowLog.push(makeStep('ledgrrr-audit', 'error', `Ledgrrr connection error: ${err.message || String(err)}`));
+  }
+
   await env.DB.prepare(
     `INSERT OR REPLACE INTO workflow_runs (
       run_id, day, trigger, panel_count, character_count, cast_json, topics_json, selected_topic,
-      prompt_a, prompt_b, model_a, model_b, image_key_a, image_key_b, artifact_log_key, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      prompt_a, prompt_b, model_a, model_b, image_key_a, image_key_b, artifact_log_key, audit_log, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     plan.run_id,
     plan.day,
@@ -141,6 +165,7 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     imageKeyA,
     imageKeyB,
     `${artifactPrefix}/workflow-log.json`,
+    auditTrail ? JSON.stringify(auditTrail) : null,
     Math.floor(Date.now() / 1000)
   ).run();
 
@@ -191,6 +216,7 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     script_a: variantA.script,
     script_b: variantB.script,
     imageGenerationStatus,
+    audit_trail: auditTrail,
     workflow_log: workflowLog
   } as ComicWorkflowResult;
 }

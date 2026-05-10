@@ -1,0 +1,12 @@
+[b00t]
+name = "ledgrrr-mcp"
+type = "mcp"
+hint = "Ledgrrr process control and workflow orchestration MCP server"
+requires_sudo = false
+
+[[b00t.mcp.stdio]]
+requires = []
+args = []
+priority = 0
+transport = "stdio"
+command = "/home/brianh/.b00t/vendor/l3dg3rr/target/release/ledgerr-mcp-server"
