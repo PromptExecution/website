@@ -53,7 +53,15 @@
       "Bash(/tmp/verification_summary.txt:*)",
       "Bash(__NEW_LINE_afa619109a8b2408__ cat:*)",
       "Bash(/tmp/e2e-test-summary.txt:*)",
-      "Bash(/tmp/final-checklist.txt:*)"
+      "Bash(/tmp/final-checklist.txt:*)",
+      "Bash(find /home/brianh/.b00t/vendor/l3dg3rr -type d -name *ui* -o -type d -name *web* -o -type d -name *frontend*)",
+      "Bash(grep -r \"localhost\\\\|0.0.0.0\\\\|deployed\\\\|online\" /home/brianh/.b00t/vendor/l3dg3rr/crates/ledgerr-host --include=*.rs --include=*.toml)",
+      "Bash(grep -E \"\\\\.rs$|\\\\.toml$\")",
+      "Bash(grep -r \"#\\\\[derive\\\\|procedural\\\\|macro\\\\|reflect\\\\|introspect\" /home/brianh/.b00t/vendor/l3dg3rr/Cargo.toml /home/brianh/.b00t/vendor/l3dg3rr/crates/*/Cargo.toml)",
+      "Bash(find /home/brianh/.b00t/vendor/l3dg3rr/crates -name *.rs -exec grep -l \"serde_json\\\\|TypeInfo\\\\|signature\\\\|fn_info\" {})",
+      "Bash(2)",
+      "Bash(b00t lfmf --tool \"ledgrrr\" --lesson \"Ledgrrr: Process Control + Governance System:*)",
+      "Bash(b00t lfmf:*)"
     ],
     "deny": []
   },
