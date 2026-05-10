@@ -1,0 +1,11 @@
+[b00t]
+name = "cloudflare-docs"
+type = "mcp"
+hint = "Cloudflare documentation MCP for product and platform docs."
+
+[[b00t.mcp.stdio]]
+command = "npx"
+args = ["-y", "mcp-remote@latest", "https://docs.mcp.cloudflare.com/mcp"]
+transport = "stdio"
+priority = 0
+requires = []

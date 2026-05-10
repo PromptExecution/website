@@ -1,0 +1,17 @@
+[b00t]
+name = "cloudflare-dev"
+type = "stack"
+hint = "On-demand Cloudflare MCP stack for docs, observability, and binding inspection."
+members = [
+  "cloudflare-docs.mcp",
+  "cloudflare-observability.mcp",
+  "cloudflare-bindings.mcp",
+]
+
+[[b00t.usage]]
+description = "Inspect available Cloudflare MCP servers"
+command = "b00t --path _b00t_ stack show cloudflare-dev"
+
+[[b00t.usage]]
+description = "Preview Cloudflare MCP activation order"
+command = "b00t --path _b00t_ stack install cloudflare-dev --dry-run"

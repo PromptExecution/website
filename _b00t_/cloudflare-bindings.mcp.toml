@@ -1,0 +1,11 @@
+[b00t]
+name = "cloudflare-bindings"
+type = "mcp"
+hint = "Cloudflare bindings MCP for Workers, Pages, D1, R2, KV, and related bindings."
+
+[[b00t.mcp.stdio]]
+command = "npx"
+args = ["-y", "mcp-remote@latest", "https://bindings.mcp.cloudflare.com/mcp"]
+transport = "stdio"
+priority = 0
+requires = []

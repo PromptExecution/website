@@ -51,6 +51,7 @@ export interface ComicWorkflowResult {
   };
   script_a: Record<string, unknown>;
   script_b: Record<string, unknown>;
+  imageGenerationStatus?: 'pending' | 'success' | 'failed' | 'error';
   workflow_log: WorkflowStepLog[];
 }
 
@@ -145,6 +146,26 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
 
   workflowLog.push(makeStep('persist-database', 'ok', 'Stored comic metadata and workflow run in D1.'));
 
+  // Trigger image generation asynchronously (non-blocking)
+  let imageGenerationStatus = 'pending';
+  (async () => {
+    try {
+      const imageGenUrl = `/api/image-generate?day=${encodeURIComponent(plan.day)}`;
+      const response = await fetch(imageGenUrl, { method: 'POST' });
+      if (response.ok) {
+        imageGenerationStatus = 'success';
+        workflowLog.push(makeStep('image-generation', 'ok', `Triggered image generation via ${imageGenUrl}`));
+      } else {
+        imageGenerationStatus = 'failed';
+        const errorText = await response.text();
+        workflowLog.push(makeStep('image-generation', 'error', `Image generation request failed with ${response.status}`));
+      }
+    } catch (err: any) {
+      imageGenerationStatus = 'error';
+      workflowLog.push(makeStep('image-generation', 'error', `Image generation request error: ${err.message || String(err)}`));
+    }
+  })();
+
   return {
     day: plan.day,
     run_id: plan.run_id,
@@ -169,6 +190,7 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     },
     script_a: variantA.script,
     script_b: variantB.script,
+    imageGenerationStatus,
     workflow_log: workflowLog
   } as ComicWorkflowResult;
 }

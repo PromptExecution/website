@@ -4,8 +4,34 @@
       "Bash(bun install:*)",
       "Bash(bun run:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(curl:*)",
+      "Bash(lsof:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "Bash(unzip:*)",
+      "Bash(git push:*)",
+      "Bash(bun --version:*)",
+      "Bash(chmod:*)",
+      "mcp__codebase-memory__search_graph",
+      "mcp__codebase-memory__index_repository",
+      "mcp__codebase-memory__get_architecture",
+      "mcp__codebase-memory__get_code_snippet",
+      "mcp__codebase-memory__list_projects",
+      "mcp__codebase-memory__search_code",
+      "mcp__b00t-mcp__b00t_whoami",
+      "mcp__b00t-mcp__b00t_learn",
+      "mcp__claude_ai_Cloudflare_Developer_Platform_2__search_cloudflare_documentation",
+      "mcp__b00t-mcp__b00t_mcp_install"
     ],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "cloudflare-docs",
+    "cloudflare-observability",
+    "cloudflare-bindings",
+    "b00t-mcp",
+    "codebase-memory"
+  ]
 }

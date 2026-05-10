@@ -1,0 +1,1638 @@
+------formdata-undici-094990745100
+Content-Disposition: form-data; name="metadata"
+
+{"main_module":"functionsWorker-0.35070945937962517.js"}
+------formdata-undici-094990745100
+Content-Disposition: form-data; name="functionsWorker-0.35070945937962517.js"; filename="functionsWorker-0.35070945937962517.js"
+Content-Type: application/javascript+module
+
+var __defProp = Object.defineProperty;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
+// api/archive.ts
+async function onRequestGet(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const page = parseInt(url.searchParams.get("page") || "1");
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "20"), 100);
+  const offset = (page - 1) * limit;
+  try {
+    const countResult = await env.DB.prepare(
+      "SELECT COUNT(*) as total FROM comics"
+    ).first();
+    const total = countResult.total || 0;
+    const comics = await env.DB.prepare(
+      "SELECT day, prompt, model_a, model_b, r2_key_a, r2_key_b, created_at FROM comics ORDER BY day DESC LIMIT ? OFFSET ?"
+    ).bind(limit, offset).all();
+    const days = comics.results.map((c) => c.day);
+    let voteResults = [];
+    if (days.length > 0) {
+      const votesQuery = await env.DB.prepare(
+        `SELECT day, variant, COUNT(*) as count FROM votes WHERE day IN (${days.map(() => "?").join(",")}) GROUP BY day, variant`
+      ).bind(...days).all();
+      voteResults = votesQuery.results;
+    }
+    const items = comics.results.map((comic) => {
+      const dayVotes = voteResults.filter((v) => v.day === comic.day);
+      const votesA = dayVotes.find((v) => v.variant === "a")?.count || 0;
+      const votesB = dayVotes.find((v) => v.variant === "b")?.count || 0;
+      return {
+        day: comic.day,
+        title: comic.prompt,
+        models: {
+          a: comic.model_a,
+          b: comic.model_b
+        },
+        votes: {
+          a: votesA,
+          b: votesB
+        },
+        created: new Date(comic.created_at * 1e3).toISOString()
+      };
+    });
+    return Response.json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      items
+    });
+  } catch (err) {
+    console.error("Error fetching archive:", err);
+    return Response.json({
+      error: err.message || "Failed to fetch archive"
+    }, { status: 500 });
+  }
+}
+var init_archive = __esm({
+  "api/archive.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    __name(onRequestGet, "onRequestGet");
+  }
+});
+
+// lib/encoding.ts
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 32768;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64.replace(/^data:[^;]+;base64,/, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+function normalizeContentType(key, fallback = "image/png") {
+  if (key.endsWith(".svg")) return "image/svg+xml";
+  if (key.endsWith(".jpg") || key.endsWith(".jpeg")) return "image/jpeg";
+  if (key.endsWith(".webp")) return "image/webp";
+  if (key.endsWith(".png")) return "image/png";
+  return fallback;
+}
+var init_encoding = __esm({
+  "lib/encoding.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    __name(arrayBufferToBase64, "arrayBufferToBase64");
+    __name(base64ToArrayBuffer, "base64ToArrayBuffer");
+    __name(normalizeContentType, "normalizeContentType");
+  }
+});
+
+// api/day.ts
+async function onRequestGet2(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const day = url.searchParams.get("day");
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return Response.json({
+      error: "Invalid day. Use YYYY-MM-DD format."
+    }, { status: 400 });
+  }
+  try {
+    const comic = await env.DB.prepare(
+      "SELECT * FROM comics WHERE day = ?"
+    ).bind(day).first();
+    if (!comic) {
+      return Response.json({
+        error: "No comic found for requested day",
+        day
+      }, { status: 404 });
+    }
+    const votes = await env.DB.prepare(
+      "SELECT variant, COUNT(*) as count FROM votes WHERE day = ? GROUP BY variant"
+    ).bind(day).all();
+    const votesA = votes.results.find((v) => v.variant === "a")?.count || 0;
+    const votesB = votes.results.find((v) => v.variant === "b")?.count || 0;
+    const fileA = await env.COMICS_BUCKET.get(comic.r2_key_a);
+    const fileB = await env.COMICS_BUCKET.get(comic.r2_key_b);
+    if (!fileA || !fileB) {
+      return Response.json({
+        error: "Comic images not found",
+        day
+      }, { status: 500 });
+    }
+    const imageA = await fileA.arrayBuffer();
+    const imageB = await fileB.arrayBuffer();
+    const typeA = fileA.httpMetadata?.contentType || normalizeContentType(comic.r2_key_a);
+    const typeB = fileB.httpMetadata?.contentType || normalizeContentType(comic.r2_key_b);
+    return Response.json({
+      day,
+      title: comic.prompt,
+      variants: {
+        a: {
+          model: comic.model_a,
+          imageUrl: `data:${typeA};base64,${arrayBufferToBase64(imageA)}`,
+          votes: votesA,
+          script: comic.script_a
+        },
+        b: {
+          model: comic.model_b,
+          imageUrl: `data:${typeB};base64,${arrayBufferToBase64(imageB)}`,
+          votes: votesB,
+          script: comic.script_b
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching day comic:", err);
+    return Response.json({
+      error: err.message || "Internal server error"
+    }, { status: 500 });
+  }
+}
+var init_day = __esm({
+  "api/day.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    init_encoding();
+    __name(onRequestGet2, "onRequestGet");
+  }
+});
+
+// api/push-key.ts
+async function onRequestGet3(context) {
+  const { env } = context;
+  const publicKey = env.VAPID_PUBLIC_KEY;
+  if (!publicKey) {
+    return Response.json({
+      error: "Push notifications are not configured on this environment"
+    }, { status: 404 });
+  }
+  return Response.json({ publicKey });
+}
+var init_push_key = __esm({
+  "api/push-key.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    __name(onRequestGet3, "onRequestGet");
+  }
+});
+
+// api/subscribe.ts
+async function onRequestPost(context) {
+  const { request, env } = context;
+  try {
+    const body = await request.json();
+    if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
+      return Response.json({
+        error: "Invalid subscription data"
+      }, { status: 400 });
+    }
+    await env.DB.prepare(
+      "INSERT OR REPLACE INTO push_subscriptions (endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?)"
+    ).bind(
+      body.endpoint,
+      body.keys.p256dh,
+      body.keys.auth,
+      Math.floor(Date.now() / 1e3)
+    ).run();
+    return Response.json({
+      success: true,
+      message: "Subscribed to daily comic notifications"
+    });
+  } catch (err) {
+    console.error("Error subscribing:", err);
+    return Response.json({
+      error: err.message || "Failed to subscribe"
+    }, { status: 500 });
+  }
+}
+async function onRequestDelete(context) {
+  const { request, env } = context;
+  try {
+    const body = await request.json();
+    if (!body.endpoint) {
+      return Response.json({
+        error: "Endpoint required"
+      }, { status: 400 });
+    }
+    await env.DB.prepare(
+      "DELETE FROM push_subscriptions WHERE endpoint = ?"
+    ).bind(body.endpoint).run();
+    return Response.json({
+      success: true,
+      message: "Unsubscribed from notifications"
+    });
+  } catch (err) {
+    console.error("Error unsubscribing:", err);
+    return Response.json({
+      error: err.message || "Failed to unsubscribe"
+    }, { status: 500 });
+  }
+}
+var init_subscribe = __esm({
+  "api/subscribe.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    __name(onRequestPost, "onRequestPost");
+    __name(onRequestDelete, "onRequestDelete");
+  }
+});
+
+// ../cast/characters.json
+var characters_default;
+var init_characters = __esm({
+  "../cast/characters.json"() {
+    characters_default = [
+      {
+        id: "robot",
+        name: "LLM Robot",
+        role: "probabilistic stick-figure robot",
+        description: "Square robot head with short antenna, expressive dot eyes, concise deadpan delivery.",
+        voice: "Technical, probabilistic, occasionally overconfident.",
+        visual_traits: [
+          "square head",
+          "single antenna",
+          "minimal stick body"
+        ],
+        sample_image: "/cast/samples/robot.svg"
+      },
+      {
+        id: "engineer",
+        name: "Engineer",
+        role: "straight-man human developer",
+        description: "Standard stick figure with round head, neutral expression, practical posture.",
+        voice: "Curious, direct, often confused by the robot.",
+        visual_traits: [
+          "round head",
+          "plain stick body"
+        ],
+        sample_image: "/cast/samples/engineer.svg"
+      },
+      {
+        id: "simon",
+        name: "Simon (BOFH)",
+        role: "system administrator",
+        description: "Stick figure with dark sunglasses and a coffee mug, slightly smug stance.",
+        voice: "Dry, sharp, one-line punchlines.",
+        visual_traits: [
+          "black sunglasses",
+          "coffee mug",
+          "deadpan posture"
+        ],
+        sample_image: "/cast/samples/simon.svg"
+      },
+      {
+        id: "founder",
+        name: "Startup Founder",
+        role: "AI hype character",
+        description: "Animated stick figure gesturing with a marker near a fake growth chart.",
+        voice: "Buzzword-heavy, sales-pitch cadence.",
+        visual_traits: [
+          "energetic arm pose",
+          "simple trend arrow sketch"
+        ],
+        sample_image: "/cast/samples/founder.svg"
+      },
+      {
+        id: "cat",
+        name: "The Cat",
+        role: "chaotic wildcard",
+        description: "Tiny line-drawn cat with upright tail and inconsistent gaze direction.",
+        voice: "No dialogue; visual chaos.",
+        visual_traits: [
+          "small triangular ears",
+          "upright tail",
+          "tiny silhouette"
+        ],
+        sample_image: "/cast/samples/cat.svg"
+      }
+    ];
+  }
+});
+
+// lib/cast.ts
+function pickCharacters(rand, count) {
+  const pool = [...CAST];
+  const selected = [];
+  const max = Math.max(1, Math.min(count, pool.length));
+  for (let i = 0; i < max; i += 1) {
+    const idx = Math.floor(rand() * pool.length);
+    selected.push(pool[idx]);
+    pool.splice(idx, 1);
+  }
+  return selected;
+}
+var CAST;
+var init_cast = __esm({
+  "lib/cast.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    init_characters();
+    CAST = characters_default;
+    __name(pickCharacters, "pickCharacters");
+  }
+});
+
+// lib/agentic-comic-workflow.ts
+var agentic_comic_workflow_exports = {};
+__export(agentic_comic_workflow_exports, {
+  previewAgenticPromptPlan: () => previewAgenticPromptPlan,
+  runAgenticComicWorkflow: () => runAgenticComicWorkflow
+});
+async function previewAgenticPromptPlan(env, options) {
+  const workflowLog = [];
+  const plan = await buildComicPlan(env, options, workflowLog);
+  return {
+    ...plan,
+    workflow_log: workflowLog
+  };
+}
+async function runAgenticComicWorkflow(env, options) {
+  const workflowLog = [];
+  const plan = await buildComicPlan(env, options, workflowLog);
+  const modelA = env.IMAGE_MODEL_A || DEFAULT_IMAGE_MODEL_A;
+  const modelB = env.IMAGE_MODEL_B || DEFAULT_IMAGE_MODEL_B;
+  const random = createSeededRng(hashToUInt32(`${plan.day}:${plan.run_id}:image-seeds`));
+  const seedA = randomInt(random, 1, 2147483600);
+  const seedB = randomInt(random, 1, 2147483600);
+  const variantA = await generateImageVariant(env, modelA, plan.prompt_a, seedA, workflowLog, "variant-a");
+  const variantB = await generateImageVariant(env, modelB, plan.prompt_b, seedB, workflowLog, "variant-b", modelA);
+  const imageKeyA = `comics/${plan.day}/a.png`;
+  const imageKeyB = `comics/${plan.day}/b.png`;
+  const artifactPrefix = `artifacts/${plan.day}/${plan.run_id}`;
+  await Promise.all([
+    env.COMICS_BUCKET.put(imageKeyA, variantA.image, { httpMetadata: { contentType: "image/png" } }),
+    env.COMICS_BUCKET.put(imageKeyB, variantB.image, { httpMetadata: { contentType: "image/png" } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/workflow-log.json`, JSON.stringify(workflowLog, null, 2), { httpMetadata: { contentType: "application/json" } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/cast.json`, JSON.stringify(plan.cast, null, 2), { httpMetadata: { contentType: "application/json" } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/topics.json`, JSON.stringify(plan.topic_candidates, null, 2), { httpMetadata: { contentType: "application/json" } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/prompt-a.txt`, plan.prompt_a, { httpMetadata: { contentType: "text/plain; charset=utf-8" } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/prompt-b.txt`, plan.prompt_b, { httpMetadata: { contentType: "text/plain; charset=utf-8" } })
+  ]);
+  workflowLog.push(makeStep("persist-artifacts", "ok", `Saved images and workflow artifacts to ${artifactPrefix}.`));
+  const scriptA = {
+    run_id: plan.run_id,
+    panel_count: plan.panel_count,
+    character_count: plan.character_count,
+    cast_ids: plan.cast.map((item) => item.id),
+    topic_candidates: plan.topic_candidates,
+    selected_topic: plan.selected_topic,
+    prompt: plan.prompt_a,
+    seed: seedA,
+    model: variantA.model
+  };
+  const scriptB = {
+    run_id: plan.run_id,
+    panel_count: plan.panel_count,
+    character_count: plan.character_count,
+    cast_ids: plan.cast.map((item) => item.id),
+    topic_candidates: plan.topic_candidates,
+    selected_topic: plan.selected_topic,
+    prompt: plan.prompt_b,
+    seed: seedB,
+    model: variantB.model
+  };
+  await env.DB.prepare(
+    "INSERT OR REPLACE INTO comics (day, prompt, model_a, model_b, r2_key_a, r2_key_b, script_a, script_b, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  ).bind(
+    plan.day,
+    plan.title,
+    variantA.model,
+    variantB.model,
+    imageKeyA,
+    imageKeyB,
+    JSON.stringify(scriptA),
+    JSON.stringify(scriptB),
+    Math.floor(Date.now() / 1e3)
+  ).run();
+  await env.DB.prepare(
+    `INSERT OR REPLACE INTO workflow_runs (
+      run_id, day, trigger, panel_count, character_count, cast_json, topics_json, selected_topic,
+      prompt_a, prompt_b, model_a, model_b, image_key_a, image_key_b, artifact_log_key, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    plan.run_id,
+    plan.day,
+    options.trigger,
+    plan.panel_count,
+    plan.character_count,
+    JSON.stringify(plan.cast),
+    JSON.stringify(plan.topic_candidates),
+    plan.selected_topic,
+    plan.prompt_a,
+    plan.prompt_b,
+    variantA.model,
+    variantB.model,
+    imageKeyA,
+    imageKeyB,
+    `${artifactPrefix}/workflow-log.json`,
+    Math.floor(Date.now() / 1e3)
+  ).run();
+  workflowLog.push(makeStep("persist-database", "ok", "Stored comic metadata and workflow run in D1."));
+  return {
+    day: plan.day,
+    run_id: plan.run_id,
+    title: plan.title,
+    panel_count: plan.panel_count,
+    character_count: plan.character_count,
+    cast: plan.cast,
+    topic_candidates: plan.topic_candidates,
+    selected_topic: plan.selected_topic,
+    model_a: variantA.model,
+    model_b: variantB.model,
+    prompt_a: plan.prompt_a,
+    prompt_b: plan.prompt_b,
+    image_key_a: imageKeyA,
+    image_key_b: imageKeyB,
+    artifact_keys: {
+      log: `${artifactPrefix}/workflow-log.json`,
+      cast: `${artifactPrefix}/cast.json`,
+      topics: `${artifactPrefix}/topics.json`,
+      prompt_a: `${artifactPrefix}/prompt-a.txt`,
+      prompt_b: `${artifactPrefix}/prompt-b.txt`
+    },
+    script_a: scriptA,
+    script_b: scriptB,
+    workflow_log: workflowLog
+  };
+}
+async function buildComicPlan(env, options, workflowLog) {
+  const now = Date.now();
+  const runId = `${options.day}-${now}-${Math.floor(Math.random() * 1e6)}`;
+  const random = createSeededRng(hashToUInt32(`${options.day}:${runId}`));
+  const panelCount = randomInt(random, 1, 4);
+  const maxCharacters = Math.min(4, CAST.length);
+  const characterCount = randomInt(random, 1, maxCharacters);
+  const chosenCast = pickCharacters(random, characterCount);
+  workflowLog.push(makeStep("sample-structure", "ok", `Selected ${panelCount} panel(s), ${characterCount} character(s).`));
+  const topicCandidates = await suggestTopics(env, chosenCast, panelCount, random, workflowLog);
+  const selectedTopic = options.force_topic || topicCandidates[randomInt(random, 0, topicCandidates.length - 1)];
+  const title = makeComicTitle(selectedTopic);
+  const promptBase = buildStandardPrompt({
+    panelCount,
+    cast: chosenCast,
+    topic: selectedTopic
+  });
+  const promptA = `${promptBase}
+Variant directive: prioritize crisp panel readability and dry technical humor.`;
+  const promptB = `${promptBase}
+Variant directive: prioritize absurd BOFH energy and unexpected visual punchline.`;
+  workflowLog.push(makeStep("build-prompts", "ok", "Built standard image generation prompts for both variants."));
+  return {
+    day: options.day,
+    run_id: runId,
+    title,
+    panel_count: panelCount,
+    character_count: characterCount,
+    cast: chosenCast,
+    topic_candidates: topicCandidates,
+    selected_topic: selectedTopic,
+    prompt_a: promptA,
+    prompt_b: promptB
+  };
+}
+async function suggestTopics(env, cast, panelCount, random, workflowLog) {
+  if (!env.AI) {
+    const fallback2 = pickFallbackTopics(random, cast);
+    workflowLog.push(makeStep("suggest-topics", "ok", "AI binding unavailable, used deterministic fallback topics."));
+    return fallback2;
+  }
+  const model = env.TOPIC_MODEL || DEFAULT_TOPIC_MODEL;
+  const systemPrompt = 'You are a technical humor prompt planner. Return JSON only: {"topics":["...", "...", "..."]}';
+  const userPrompt = [
+    `Create 3 concise comic topic candidates for an xkcd-style technical comic.`,
+    `Panel count: ${panelCount}`,
+    `Cast: ${cast.map((c) => `${c.name} (${c.role})`).join(", ")}`,
+    `Rules: each topic must be specific, practical, and under 12 words.`
+  ].join("\n");
+  try {
+    const response = await env.AI.run(model, {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      max_tokens: 350,
+      temperature: 0.8
+    });
+    const raw = response?.response || JSON.stringify(response);
+    const parsed = parseJsonFromText(raw);
+    const topics = Array.isArray(parsed?.topics) ? parsed.topics.map((topic) => String(topic).trim()).filter(Boolean).slice(0, 3) : [];
+    if (topics.length === 3) {
+      workflowLog.push(makeStep("suggest-topics", "ok", `Generated topic candidates using ${model}.`));
+      return topics;
+    }
+  } catch (err) {
+    workflowLog.push(makeStep("suggest-topics", "error", `Topic generation failed on ${model}: ${err.message || String(err)}`));
+  }
+  const fallback = pickFallbackTopics(random, cast);
+  workflowLog.push(makeStep("suggest-topics-fallback", "ok", "Used deterministic fallback topics."));
+  return fallback;
+}
+function pickFallbackTopics(random, cast) {
+  const pool = [...FALLBACK_TOPICS];
+  const selected = [];
+  while (selected.length < 3 && pool.length > 0) {
+    const idx = Math.floor(random() * pool.length);
+    selected.push(pool[idx]);
+    pool.splice(idx, 1);
+  }
+  if (selected.length < 3) {
+    while (selected.length < 3) {
+      selected.push(`unexpected ${cast[0]?.name || "robot"} behavior in production`);
+    }
+  }
+  return selected;
+}
+async function generateImageVariant(env, model, prompt, seed, workflowLog, stepName, fallbackModel) {
+  if (!env.AI) {
+    throw new Error("Workers AI binding is required for graphic generation.");
+  }
+  try {
+    const image = await generateImageWithModel(env.AI, model, prompt, seed);
+    workflowLog.push(makeStep(stepName, "ok", `Generated image with ${model} (seed ${seed}).`));
+    return { image, model };
+  } catch (err) {
+    if (!fallbackModel) {
+      workflowLog.push(makeStep(stepName, "error", `Image generation failed on ${model}: ${err.message || String(err)}`));
+      throw err;
+    }
+    const fallbackImage = await generateImageWithModel(env.AI, fallbackModel, prompt, seed + 99);
+    const fallbackName = `${fallbackModel} (fallback for ${model})`;
+    workflowLog.push(makeStep(stepName, "ok", `Model ${model} failed, used fallback ${fallbackName}.`));
+    return { image: fallbackImage, model: fallbackName };
+  }
+}
+async function generateImageWithModel(ai, model, prompt, seed) {
+  const payload = {
+    prompt,
+    negative_prompt: NEGATIVE_PROMPT,
+    seed
+  };
+  if (model.includes("stable-diffusion-xl-lightning")) {
+    payload.width = 1344;
+    payload.height = 768;
+    payload.num_steps = 8;
+    payload.guidance = 4.5;
+  } else {
+    payload.width = 1344;
+    payload.height = 768;
+    payload.num_steps = 6;
+  }
+  const result = await ai.run(model, payload);
+  return normalizeImageOutput(result);
+}
+async function normalizeImageOutput(output) {
+  if (!output) {
+    throw new Error("Model returned empty image payload.");
+  }
+  if (output instanceof ArrayBuffer) return output;
+  if (ArrayBuffer.isView(output)) return output.buffer.slice(output.byteOffset, output.byteOffset + output.byteLength);
+  if (output instanceof ReadableStream) return new Response(output).arrayBuffer();
+  if (typeof output === "string") return base64ToArrayBuffer(output);
+  if (output.image) return base64ToArrayBuffer(output.image);
+  if (output.result?.image) return base64ToArrayBuffer(output.result.image);
+  if (typeof output.b64_json === "string") return base64ToArrayBuffer(output.b64_json);
+  throw new Error("Unsupported image output shape from Workers AI.");
+}
+function buildStandardPrompt(input) {
+  const castLines = input.cast.map((char, idx) => `${idx + 1}. ${char.name} (${char.role})
+   Description: ${char.description}
+   Visual cues: ${char.visual_traits.join(", ")}
+   Sample reference: ${char.sample_image}`).join("\n");
+  return [
+    "Create a graphic webcomic image, not plain text output.",
+    "Style: xkcd-inspired minimal black-and-white line art, hand-drawn stick figures, technical humor.",
+    `Layout: exactly ${input.panelCount} panels in one horizontal strip with visible panel borders.`,
+    "Each panel should contain concise speech or thought bubbles as part of the drawing.",
+    `Topic: ${input.topic}`,
+    "Characters to include:",
+    castLines,
+    "Scene requirements:",
+    "- Keep the robot internal monologue in a cloud-like thought bubble with monospace look.",
+    "- Keep Simon deadpan if Simon is present.",
+    "- Keep backgrounds minimal and technical (whiteboard, terminal, server rack hints).",
+    "- No full-color illustration; monochrome or near-monochrome only.",
+    "- No captions outside panels.",
+    "- No watermark, logo, signature, or unrelated text."
+  ].join("\n");
+}
+function makeComicTitle(topic) {
+  const trimmed = topic.trim();
+  const clean = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  return `LLM DOES NOT COMPUTE: ${clean}`;
+}
+function makeStep(step, status, detail) {
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  return {
+    step,
+    status,
+    started_at: now,
+    completed_at: now,
+    detail
+  };
+}
+function createSeededRng(seed) {
+  let t = seed >>> 0;
+  return () => {
+    t += 1831565813;
+    let x = Math.imul(t ^ t >>> 15, t | 1);
+    x ^= x + Math.imul(x ^ x >>> 7, x | 61);
+    return ((x ^ x >>> 14) >>> 0) / 4294967296;
+  };
+}
+function randomInt(rand, min, max) {
+  return Math.floor(rand() * (max - min + 1)) + min;
+}
+function hashToUInt32(input) {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function parseJsonFromText(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const match2 = raw.match(/\{[\s\S]*\}/);
+    if (!match2) return null;
+    try {
+      return JSON.parse(match2[0]);
+    } catch {
+      return null;
+    }
+  }
+}
+var DEFAULT_IMAGE_MODEL_A, DEFAULT_IMAGE_MODEL_B, DEFAULT_TOPIC_MODEL, FALLBACK_TOPICS, NEGATIVE_PROMPT;
+var init_agentic_comic_workflow = __esm({
+  "lib/agentic-comic-workflow.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    init_cast();
+    init_encoding();
+    DEFAULT_IMAGE_MODEL_A = "@cf/bytedance/stable-diffusion-xl-lightning";
+    DEFAULT_IMAGE_MODEL_B = "@cf/black-forest-labs/flux-1-schnell";
+    DEFAULT_TOPIC_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+    FALLBACK_TOPICS = [
+      "prompt injection incident in production",
+      "Kubernetes deployment rollback panic",
+      "Cloudflare cache key confusion",
+      "zero-downtime deploy that was not zero downtime",
+      "hallucinated source citations in incident report",
+      "DNS propagation waiting game",
+      "mysterious authentication timeout after lunch",
+      "cost optimization meeting that increases costs",
+      "SRE on-call handoff gone sideways",
+      "passive aggressive status page update"
+    ];
+    NEGATIVE_PROMPT = [
+      "photo realistic",
+      "3d render",
+      "oil painting",
+      "high saturation",
+      "blurry",
+      "extra limbs",
+      "text wall",
+      "watermark",
+      "logo",
+      "signature"
+    ].join(", ");
+    __name(previewAgenticPromptPlan, "previewAgenticPromptPlan");
+    __name(runAgenticComicWorkflow, "runAgenticComicWorkflow");
+    __name(buildComicPlan, "buildComicPlan");
+    __name(suggestTopics, "suggestTopics");
+    __name(pickFallbackTopics, "pickFallbackTopics");
+    __name(generateImageVariant, "generateImageVariant");
+    __name(generateImageWithModel, "generateImageWithModel");
+    __name(normalizeImageOutput, "normalizeImageOutput");
+    __name(buildStandardPrompt, "buildStandardPrompt");
+    __name(makeComicTitle, "makeComicTitle");
+    __name(makeStep, "makeStep");
+    __name(createSeededRng, "createSeededRng");
+    __name(randomInt, "randomInt");
+    __name(hashToUInt32, "hashToUInt32");
+    __name(parseJsonFromText, "parseJsonFromText");
+  }
+});
+
+// api/test-generate.ts
+async function onRequestPost2(context) {
+  const { env, request } = context;
+  if (!env.TEST_SECRET) {
+    return Response.json({
+      error: "TEST_SECRET is not configured for this environment"
+    }, { status: 503 });
+  }
+  const authHeader = request.headers.get("Authorization");
+  const expectedAuth = `Bearer ${env.TEST_SECRET}`;
+  if (authHeader !== expectedAuth) {
+    return Response.json({
+      error: "Unauthorized",
+      hint: "Set Authorization header: Bearer <TEST_SECRET>"
+    }, { status: 401 });
+  }
+  try {
+    const { runAgenticComicWorkflow: runAgenticComicWorkflow2, previewAgenticPromptPlan: previewAgenticPromptPlan2 } = await Promise.resolve().then(() => (init_agentic_comic_workflow(), agentic_comic_workflow_exports));
+    const reqUrl = new URL(request.url);
+    const body = await tryParseJson(request) || {};
+    const day = String(body.day || reqUrl.searchParams.get("day") || (/* @__PURE__ */ new Date()).toISOString().split("T")[0]);
+    const force = String(body.force || reqUrl.searchParams.get("force") || "0") === "1";
+    const dryRun = String(body.dry_run || reqUrl.searchParams.get("dry_run") || "0") === "1";
+    const forceTopic = String(body.topic || reqUrl.searchParams.get("topic") || "").trim() || void 0;
+    const keyA = `comics/${day}/a.png`;
+    const keyB = `comics/${day}/b.png`;
+    const legacyKeyA = `comics/${day}/a.svg`;
+    const legacyKeyB = `comics/${day}/b.svg`;
+    const [existingA, existingB, existingLegacyA, existingLegacyB] = await Promise.all([
+      env.COMICS_BUCKET.head(keyA),
+      env.COMICS_BUCKET.head(keyB),
+      env.COMICS_BUCKET.head(legacyKeyA),
+      env.COMICS_BUCKET.head(legacyKeyB)
+    ]);
+    if (!force && (existingA || existingB || existingLegacyA || existingLegacyB)) {
+      return Response.json({
+        error: "Comic object already exists for today",
+        day,
+        hint: "Use force=1 to overwrite metadata with a new run for the same day"
+      }, { status: 409 });
+    }
+    if (dryRun) {
+      const plan = await previewAgenticPromptPlan2(env, {
+        day,
+        force_topic: forceTopic,
+        trigger: "manual"
+      });
+      return Response.json({
+        success: true,
+        dry_run: true,
+        day,
+        message: "Generated agentic prompt plan without image generation.",
+        plan
+      });
+    }
+    const result = await runAgenticComicWorkflow2(env, {
+      day,
+      force_topic: forceTopic,
+      trigger: "manual"
+    });
+    return Response.json({
+      success: true,
+      day,
+      title: result.title,
+      run_id: result.run_id,
+      panel_count: result.panel_count,
+      character_count: result.character_count,
+      topic_candidates: result.topic_candidates,
+      selected_topic: result.selected_topic,
+      cast: result.cast,
+      models: {
+        a: result.model_a,
+        b: result.model_b
+      },
+      r2_keys: {
+        a: result.image_key_a,
+        b: result.image_key_b
+      },
+      artifact_keys: result.artifact_keys,
+      workflow_log: result.workflow_log,
+      message: "Graphic comic generated successfully via agentic workflow. Visit /api/today to see it."
+    });
+  } catch (err) {
+    console.error("Test generation failed:", err);
+    return Response.json({
+      error: err.message || "Generation failed",
+      stack: err.stack,
+      hint: "Check logs with: wrangler pages deployment tail"
+    }, { status: 500 });
+  }
+}
+async function onRequestGet4(context) {
+  return Response.json({
+    message: "Agentic graphic comic generation endpoint",
+    method: "POST",
+    auth: "Authorization: Bearer <TEST_SECRET>",
+    examples: [
+      'curl -X POST -H "Authorization: Bearer <TEST_SECRET>" https://your-site.com/api/test-generate',
+      `curl -X POST -H "Authorization: Bearer <TEST_SECRET>" -H "Content-Type: application/json" -d '{"topic":"cache invalidation incident","force":"1"}' https://your-site.com/api/test-generate`,
+      `curl -X POST -H "Authorization: Bearer <TEST_SECRET>" -H "Content-Type: application/json" -d '{"dry_run":"1"}' https://your-site.com/api/test-generate`
+    ]
+  });
+}
+async function tryParseJson(request) {
+  try {
+    if (request.headers.get("Content-Type")?.includes("application/json")) {
+      return await request.json();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+var init_test_generate = __esm({
+  "api/test-generate.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    __name(onRequestPost2, "onRequestPost");
+    __name(onRequestGet4, "onRequestGet");
+    __name(tryParseJson, "tryParseJson");
+  }
+});
+
+// api/today.ts
+async function onRequestGet5(context) {
+  const { env } = context;
+  const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  try {
+    let comic = await env.DB.prepare(
+      "SELECT * FROM comics WHERE day = ?"
+    ).bind(today).first();
+    if (!comic) {
+      comic = await env.DB.prepare(
+        "SELECT * FROM comics ORDER BY day DESC LIMIT 1"
+      ).first();
+      if (!comic) {
+        return Response.json({
+          error: "No comics available yet",
+          day: today
+        }, { status: 404 });
+      }
+    }
+    const comicDay = comic.day;
+    const votes = await env.DB.prepare(
+      "SELECT variant, COUNT(*) as count FROM votes WHERE day = ? GROUP BY variant"
+    ).bind(comicDay).all();
+    const votesA = votes.results.find((v) => v.variant === "a")?.count || 0;
+    const votesB = votes.results.find((v) => v.variant === "b")?.count || 0;
+    const urlA = await env.COMICS_BUCKET.get(comic.r2_key_a);
+    const urlB = await env.COMICS_BUCKET.get(comic.r2_key_b);
+    if (!urlA || !urlB) {
+      return Response.json({
+        error: "Comic images not found",
+        day: comicDay
+      }, { status: 500 });
+    }
+    const imageA = await urlA.arrayBuffer();
+    const imageB = await urlB.arrayBuffer();
+    const typeA = urlA.httpMetadata?.contentType || normalizeContentType(comic.r2_key_a);
+    const typeB = urlB.httpMetadata?.contentType || normalizeContentType(comic.r2_key_b);
+    return Response.json({
+      day: comicDay,
+      title: comic.prompt,
+      variants: {
+        a: {
+          model: comic.model_a,
+          imageUrl: `data:${typeA};base64,${arrayBufferToBase64(imageA)}`,
+          votes: votesA,
+          script: comic.script_a
+        },
+        b: {
+          model: comic.model_b,
+          imageUrl: `data:${typeB};base64,${arrayBufferToBase64(imageB)}`,
+          votes: votesB,
+          script: comic.script_b
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching today's comic:", err);
+    return Response.json({
+      error: err.message || "Internal server error"
+    }, { status: 500 });
+  }
+}
+var init_today = __esm({
+  "api/today.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    init_encoding();
+    __name(onRequestGet5, "onRequestGet");
+  }
+});
+
+// api/vote.ts
+async function onRequestPost3(context) {
+  const { request, env } = context;
+  try {
+    const body = await request.json();
+    if (!body.day || !body.variant || !["a", "b"].includes(body.variant)) {
+      return Response.json({
+        error: "Invalid request. Provide day and variant (a or b)"
+      }, { status: 400 });
+    }
+    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+    const ua = request.headers.get("User-Agent") || "";
+    const voterHash = await hashString(`${ip}:${ua}:${body.day}`);
+    const result = await env.DB.prepare(
+      "INSERT OR REPLACE INTO votes (day, variant, voter_hash, created_at) VALUES (?, ?, ?, ?)"
+    ).bind(
+      body.day,
+      body.variant,
+      voterHash,
+      Math.floor(Date.now() / 1e3)
+    ).run();
+    const votes = await env.DB.prepare(
+      "SELECT variant, COUNT(*) as count FROM votes WHERE day = ? GROUP BY variant"
+    ).bind(body.day).all();
+    const votesA = votes.results.find((v) => v.variant === "a")?.count || 0;
+    const votesB = votes.results.find((v) => v.variant === "b")?.count || 0;
+    return Response.json({
+      success: true,
+      votes: { a: votesA, b: votesB }
+    });
+  } catch (err) {
+    console.error("Error recording vote:", err);
+    return Response.json({
+      error: err.message || "Failed to record vote"
+    }, { status: 500 });
+  }
+}
+async function hashString(str) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+var init_vote = __esm({
+  "api/vote.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    __name(onRequestPost3, "onRequestPost");
+    __name(hashString, "hashString");
+  }
+});
+
+// api/workflow.ts
+async function onRequestGet6(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+  const day = url.searchParams.get("day");
+  const includeArtifacts = url.searchParams.get("include_artifacts") === "1";
+  try {
+    const run = day ? await env.DB.prepare(
+      "SELECT * FROM workflow_runs WHERE day = ? ORDER BY created_at DESC LIMIT 1"
+    ).bind(day).first() : await env.DB.prepare(
+      "SELECT * FROM workflow_runs ORDER BY created_at DESC LIMIT 1"
+    ).first();
+    if (!run) {
+      return Response.json({
+        error: "No workflow run found",
+        day: day || null
+      }, { status: 404 });
+    }
+    const response = {
+      run_id: run.run_id,
+      day: run.day,
+      trigger: run.trigger,
+      panel_count: run.panel_count,
+      character_count: run.character_count,
+      selected_topic: run.selected_topic,
+      model_a: run.model_a,
+      model_b: run.model_b,
+      image_key_a: run.image_key_a,
+      image_key_b: run.image_key_b,
+      artifact_log_key: run.artifact_log_key,
+      created_at: run.created_at
+    };
+    if (includeArtifacts) {
+      const [logObj, castObj, topicsObj] = await Promise.all([
+        env.COMICS_BUCKET.get(run.artifact_log_key),
+        env.COMICS_BUCKET.get(run.artifact_log_key.replace("workflow-log.json", "cast.json")),
+        env.COMICS_BUCKET.get(run.artifact_log_key.replace("workflow-log.json", "topics.json"))
+      ]);
+      response.artifacts = {
+        workflow_log: logObj ? JSON.parse(await logObj.text()) : null,
+        cast: castObj ? JSON.parse(await castObj.text()) : null,
+        topics: topicsObj ? JSON.parse(await topicsObj.text()) : null
+      };
+    }
+    return Response.json(response);
+  } catch (err) {
+    console.error("Error fetching workflow run:", err);
+    return Response.json({
+      error: err.message || "Failed to fetch workflow run"
+    }, { status: 500 });
+  }
+}
+var init_workflow = __esm({
+  "api/workflow.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    __name(onRequestGet6, "onRequestGet");
+  }
+});
+
+// _middleware.ts
+async function onRequest(context) {
+  const { request, next, env } = context;
+  if (request.url.includes("/api/")) {
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Max-Age": "86400"
+        }
+      });
+    }
+    const response = await next();
+    const newHeaders = new Headers(response.headers);
+    newHeaders.set("Access-Control-Allow-Origin", "*");
+    return new Response(response.body, {
+      status: response.status,
+      headers: newHeaders
+    });
+  }
+  return next();
+}
+var init_middleware = __esm({
+  "_middleware.ts"() {
+    "use strict";
+    init_functionsRoutes_0_692898257009851();
+    __name(onRequest, "onRequest");
+  }
+});
+
+// ../.wrangler/tmp/pages-bPpJc1/functionsRoutes-0.692898257009851.mjs
+var routes;
+var init_functionsRoutes_0_692898257009851 = __esm({
+  "../.wrangler/tmp/pages-bPpJc1/functionsRoutes-0.692898257009851.mjs"() {
+    "use strict";
+    init_archive();
+    init_day();
+    init_push_key();
+    init_subscribe();
+    init_subscribe();
+    init_test_generate();
+    init_test_generate();
+    init_today();
+    init_vote();
+    init_workflow();
+    init_middleware();
+    routes = [
+      {
+        routePath: "/api/archive",
+        mountPath: "/api",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet]
+      },
+      {
+        routePath: "/api/day",
+        mountPath: "/api",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet2]
+      },
+      {
+        routePath: "/api/push-key",
+        mountPath: "/api",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet3]
+      },
+      {
+        routePath: "/api/subscribe",
+        mountPath: "/api",
+        method: "DELETE",
+        middlewares: [],
+        modules: [onRequestDelete]
+      },
+      {
+        routePath: "/api/subscribe",
+        mountPath: "/api",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost]
+      },
+      {
+        routePath: "/api/test-generate",
+        mountPath: "/api",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet4]
+      },
+      {
+        routePath: "/api/test-generate",
+        mountPath: "/api",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost2]
+      },
+      {
+        routePath: "/api/today",
+        mountPath: "/api",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet5]
+      },
+      {
+        routePath: "/api/vote",
+        mountPath: "/api",
+        method: "POST",
+        middlewares: [],
+        modules: [onRequestPost3]
+      },
+      {
+        routePath: "/api/workflow",
+        mountPath: "/api",
+        method: "GET",
+        middlewares: [],
+        modules: [onRequestGet6]
+      },
+      {
+        routePath: "/",
+        mountPath: "/",
+        method: "",
+        middlewares: [onRequest],
+        modules: []
+      }
+    ];
+  }
+});
+
+// ../../../.npm/_npx/32026684e21afda6/node_modules/wrangler/templates/pages-template-worker.ts
+init_functionsRoutes_0_692898257009851();
+
+// ../../../.npm/_npx/32026684e21afda6/node_modules/path-to-regexp/dist.es2015/index.js
+init_functionsRoutes_0_692898257009851();
+function lexer(str) {
+  var tokens = [];
+  var i = 0;
+  while (i < str.length) {
+    var char = str[i];
+    if (char === "*" || char === "+" || char === "?") {
+      tokens.push({ type: "MODIFIER", index: i, value: str[i++] });
+      continue;
+    }
+    if (char === "\\") {
+      tokens.push({ type: "ESCAPED_CHAR", index: i++, value: str[i++] });
+      continue;
+    }
+    if (char === "{") {
+      tokens.push({ type: "OPEN", index: i, value: str[i++] });
+      continue;
+    }
+    if (char === "}") {
+      tokens.push({ type: "CLOSE", index: i, value: str[i++] });
+      continue;
+    }
+    if (char === ":") {
+      var name = "";
+      var j = i + 1;
+      while (j < str.length) {
+        var code = str.charCodeAt(j);
+        if (
+          // `0-9`
+          code >= 48 && code <= 57 || // `A-Z`
+          code >= 65 && code <= 90 || // `a-z`
+          code >= 97 && code <= 122 || // `_`
+          code === 95
+        ) {
+          name += str[j++];
+          continue;
+        }
+        break;
+      }
+      if (!name)
+        throw new TypeError("Missing parameter name at ".concat(i));
+      tokens.push({ type: "NAME", index: i, value: name });
+      i = j;
+      continue;
+    }
+    if (char === "(") {
+      var count = 1;
+      var pattern = "";
+      var j = i + 1;
+      if (str[j] === "?") {
+        throw new TypeError('Pattern cannot start with "?" at '.concat(j));
+      }
+      while (j < str.length) {
+        if (str[j] === "\\") {
+          pattern += str[j++] + str[j++];
+          continue;
+        }
+        if (str[j] === ")") {
+          count--;
+          if (count === 0) {
+            j++;
+            break;
+          }
+        } else if (str[j] === "(") {
+          count++;
+          if (str[j + 1] !== "?") {
+            throw new TypeError("Capturing groups are not allowed at ".concat(j));
+          }
+        }
+        pattern += str[j++];
+      }
+      if (count)
+        throw new TypeError("Unbalanced pattern at ".concat(i));
+      if (!pattern)
+        throw new TypeError("Missing pattern at ".concat(i));
+      tokens.push({ type: "PATTERN", index: i, value: pattern });
+      i = j;
+      continue;
+    }
+    tokens.push({ type: "CHAR", index: i, value: str[i++] });
+  }
+  tokens.push({ type: "END", index: i, value: "" });
+  return tokens;
+}
+__name(lexer, "lexer");
+function parse(str, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var tokens = lexer(str);
+  var _a = options.prefixes, prefixes = _a === void 0 ? "./" : _a, _b = options.delimiter, delimiter = _b === void 0 ? "/#?" : _b;
+  var result = [];
+  var key = 0;
+  var i = 0;
+  var path = "";
+  var tryConsume = /* @__PURE__ */ __name(function(type) {
+    if (i < tokens.length && tokens[i].type === type)
+      return tokens[i++].value;
+  }, "tryConsume");
+  var mustConsume = /* @__PURE__ */ __name(function(type) {
+    var value2 = tryConsume(type);
+    if (value2 !== void 0)
+      return value2;
+    var _a2 = tokens[i], nextType = _a2.type, index = _a2.index;
+    throw new TypeError("Unexpected ".concat(nextType, " at ").concat(index, ", expected ").concat(type));
+  }, "mustConsume");
+  var consumeText = /* @__PURE__ */ __name(function() {
+    var result2 = "";
+    var value2;
+    while (value2 = tryConsume("CHAR") || tryConsume("ESCAPED_CHAR")) {
+      result2 += value2;
+    }
+    return result2;
+  }, "consumeText");
+  var isSafe = /* @__PURE__ */ __name(function(value2) {
+    for (var _i = 0, delimiter_1 = delimiter; _i < delimiter_1.length; _i++) {
+      var char2 = delimiter_1[_i];
+      if (value2.indexOf(char2) > -1)
+        return true;
+    }
+    return false;
+  }, "isSafe");
+  var safePattern = /* @__PURE__ */ __name(function(prefix2) {
+    var prev = result[result.length - 1];
+    var prevText = prefix2 || (prev && typeof prev === "string" ? prev : "");
+    if (prev && !prevText) {
+      throw new TypeError('Must have text between two parameters, missing text after "'.concat(prev.name, '"'));
+    }
+    if (!prevText || isSafe(prevText))
+      return "[^".concat(escapeString(delimiter), "]+?");
+    return "(?:(?!".concat(escapeString(prevText), ")[^").concat(escapeString(delimiter), "])+?");
+  }, "safePattern");
+  while (i < tokens.length) {
+    var char = tryConsume("CHAR");
+    var name = tryConsume("NAME");
+    var pattern = tryConsume("PATTERN");
+    if (name || pattern) {
+      var prefix = char || "";
+      if (prefixes.indexOf(prefix) === -1) {
+        path += prefix;
+        prefix = "";
+      }
+      if (path) {
+        result.push(path);
+        path = "";
+      }
+      result.push({
+        name: name || key++,
+        prefix,
+        suffix: "",
+        pattern: pattern || safePattern(prefix),
+        modifier: tryConsume("MODIFIER") || ""
+      });
+      continue;
+    }
+    var value = char || tryConsume("ESCAPED_CHAR");
+    if (value) {
+      path += value;
+      continue;
+    }
+    if (path) {
+      result.push(path);
+      path = "";
+    }
+    var open = tryConsume("OPEN");
+    if (open) {
+      var prefix = consumeText();
+      var name_1 = tryConsume("NAME") || "";
+      var pattern_1 = tryConsume("PATTERN") || "";
+      var suffix = consumeText();
+      mustConsume("CLOSE");
+      result.push({
+        name: name_1 || (pattern_1 ? key++ : ""),
+        pattern: name_1 && !pattern_1 ? safePattern(prefix) : pattern_1,
+        prefix,
+        suffix,
+        modifier: tryConsume("MODIFIER") || ""
+      });
+      continue;
+    }
+    mustConsume("END");
+  }
+  return result;
+}
+__name(parse, "parse");
+function match(str, options) {
+  var keys = [];
+  var re = pathToRegexp(str, keys, options);
+  return regexpToFunction(re, keys, options);
+}
+__name(match, "match");
+function regexpToFunction(re, keys, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var _a = options.decode, decode = _a === void 0 ? function(x) {
+    return x;
+  } : _a;
+  return function(pathname) {
+    var m = re.exec(pathname);
+    if (!m)
+      return false;
+    var path = m[0], index = m.index;
+    var params = /* @__PURE__ */ Object.create(null);
+    var _loop_1 = /* @__PURE__ */ __name(function(i2) {
+      if (m[i2] === void 0)
+        return "continue";
+      var key = keys[i2 - 1];
+      if (key.modifier === "*" || key.modifier === "+") {
+        params[key.name] = m[i2].split(key.prefix + key.suffix).map(function(value) {
+          return decode(value, key);
+        });
+      } else {
+        params[key.name] = decode(m[i2], key);
+      }
+    }, "_loop_1");
+    for (var i = 1; i < m.length; i++) {
+      _loop_1(i);
+    }
+    return { path, index, params };
+  };
+}
+__name(regexpToFunction, "regexpToFunction");
+function escapeString(str) {
+  return str.replace(/([.+*?=^!:${}()[\]|/\\])/g, "\\$1");
+}
+__name(escapeString, "escapeString");
+function flags(options) {
+  return options && options.sensitive ? "" : "i";
+}
+__name(flags, "flags");
+function regexpToRegexp(path, keys) {
+  if (!keys)
+    return path;
+  var groupsRegex = /\((?:\?<(.*?)>)?(?!\?)/g;
+  var index = 0;
+  var execResult = groupsRegex.exec(path.source);
+  while (execResult) {
+    keys.push({
+      // Use parenthesized substring match if available, index otherwise
+      name: execResult[1] || index++,
+      prefix: "",
+      suffix: "",
+      modifier: "",
+      pattern: ""
+    });
+    execResult = groupsRegex.exec(path.source);
+  }
+  return path;
+}
+__name(regexpToRegexp, "regexpToRegexp");
+function arrayToRegexp(paths, keys, options) {
+  var parts = paths.map(function(path) {
+    return pathToRegexp(path, keys, options).source;
+  });
+  return new RegExp("(?:".concat(parts.join("|"), ")"), flags(options));
+}
+__name(arrayToRegexp, "arrayToRegexp");
+function stringToRegexp(path, keys, options) {
+  return tokensToRegexp(parse(path, options), keys, options);
+}
+__name(stringToRegexp, "stringToRegexp");
+function tokensToRegexp(tokens, keys, options) {
+  if (options === void 0) {
+    options = {};
+  }
+  var _a = options.strict, strict = _a === void 0 ? false : _a, _b = options.start, start = _b === void 0 ? true : _b, _c = options.end, end = _c === void 0 ? true : _c, _d = options.encode, encode = _d === void 0 ? function(x) {
+    return x;
+  } : _d, _e = options.delimiter, delimiter = _e === void 0 ? "/#?" : _e, _f = options.endsWith, endsWith = _f === void 0 ? "" : _f;
+  var endsWithRe = "[".concat(escapeString(endsWith), "]|$");
+  var delimiterRe = "[".concat(escapeString(delimiter), "]");
+  var route = start ? "^" : "";
+  for (var _i = 0, tokens_1 = tokens; _i < tokens_1.length; _i++) {
+    var token = tokens_1[_i];
+    if (typeof token === "string") {
+      route += escapeString(encode(token));
+    } else {
+      var prefix = escapeString(encode(token.prefix));
+      var suffix = escapeString(encode(token.suffix));
+      if (token.pattern) {
+        if (keys)
+          keys.push(token);
+        if (prefix || suffix) {
+          if (token.modifier === "+" || token.modifier === "*") {
+            var mod = token.modifier === "*" ? "?" : "";
+            route += "(?:".concat(prefix, "((?:").concat(token.pattern, ")(?:").concat(suffix).concat(prefix, "(?:").concat(token.pattern, "))*)").concat(suffix, ")").concat(mod);
+          } else {
+            route += "(?:".concat(prefix, "(").concat(token.pattern, ")").concat(suffix, ")").concat(token.modifier);
+          }
+        } else {
+          if (token.modifier === "+" || token.modifier === "*") {
+            throw new TypeError('Can not repeat "'.concat(token.name, '" without a prefix and suffix'));
+          }
+          route += "(".concat(token.pattern, ")").concat(token.modifier);
+        }
+      } else {
+        route += "(?:".concat(prefix).concat(suffix, ")").concat(token.modifier);
+      }
+    }
+  }
+  if (end) {
+    if (!strict)
+      route += "".concat(delimiterRe, "?");
+    route += !options.endsWith ? "$" : "(?=".concat(endsWithRe, ")");
+  } else {
+    var endToken = tokens[tokens.length - 1];
+    var isEndDelimited = typeof endToken === "string" ? delimiterRe.indexOf(endToken[endToken.length - 1]) > -1 : endToken === void 0;
+    if (!strict) {
+      route += "(?:".concat(delimiterRe, "(?=").concat(endsWithRe, "))?");
+    }
+    if (!isEndDelimited) {
+      route += "(?=".concat(delimiterRe, "|").concat(endsWithRe, ")");
+    }
+  }
+  return new RegExp(route, flags(options));
+}
+__name(tokensToRegexp, "tokensToRegexp");
+function pathToRegexp(path, keys, options) {
+  if (path instanceof RegExp)
+    return regexpToRegexp(path, keys);
+  if (Array.isArray(path))
+    return arrayToRegexp(path, keys, options);
+  return stringToRegexp(path, keys, options);
+}
+__name(pathToRegexp, "pathToRegexp");
+
+// ../../../.npm/_npx/32026684e21afda6/node_modules/wrangler/templates/pages-template-worker.ts
+var escapeRegex = /[.+?^${}()|[\]\\]/g;
+function* executeRequest(request) {
+  const requestPath = new URL(request.url).pathname;
+  for (const route of [...routes].reverse()) {
+    if (route.method && route.method !== request.method) {
+      continue;
+    }
+    const routeMatcher = match(route.routePath.replace(escapeRegex, "\\$&"), {
+      end: false
+    });
+    const mountMatcher = match(route.mountPath.replace(escapeRegex, "\\$&"), {
+      end: false
+    });
+    const matchResult = routeMatcher(requestPath);
+    const mountMatchResult = mountMatcher(requestPath);
+    if (matchResult && mountMatchResult) {
+      for (const handler of route.middlewares.flat()) {
+        yield {
+          handler,
+          params: matchResult.params,
+          path: mountMatchResult.path
+        };
+      }
+    }
+  }
+  for (const route of routes) {
+    if (route.method && route.method !== request.method) {
+      continue;
+    }
+    const routeMatcher = match(route.routePath.replace(escapeRegex, "\\$&"), {
+      end: true
+    });
+    const mountMatcher = match(route.mountPath.replace(escapeRegex, "\\$&"), {
+      end: false
+    });
+    const matchResult = routeMatcher(requestPath);
+    const mountMatchResult = mountMatcher(requestPath);
+    if (matchResult && mountMatchResult && route.modules.length) {
+      for (const handler of route.modules.flat()) {
+        yield {
+          handler,
+          params: matchResult.params,
+          path: matchResult.path
+        };
+      }
+      break;
+    }
+  }
+}
+__name(executeRequest, "executeRequest");
+var pages_template_worker_default = {
+  async fetch(originalRequest, env, workerContext) {
+    let request = originalRequest;
+    const handlerIterator = executeRequest(request);
+    let data = {};
+    let isFailOpen = false;
+    const next = /* @__PURE__ */ __name(async (input, init) => {
+      if (input !== void 0) {
+        let url = input;
+        if (typeof input === "string") {
+          url = new URL(input, request.url).toString();
+        }
+        request = new Request(url, init);
+      }
+      const result = handlerIterator.next();
+      if (result.done === false) {
+        const { handler, params, path } = result.value;
+        const context = {
+          request: new Request(request.clone()),
+          functionPath: path,
+          next,
+          params,
+          get data() {
+            return data;
+          },
+          set data(value) {
+            if (typeof value !== "object" || value === null) {
+              throw new Error("context.data must be an object");
+            }
+            data = value;
+          },
+          env,
+          waitUntil: workerContext.waitUntil.bind(workerContext),
+          passThroughOnException: /* @__PURE__ */ __name(() => {
+            isFailOpen = true;
+          }, "passThroughOnException")
+        };
+        const response = await handler(context);
+        if (!(response instanceof Response)) {
+          throw new Error("Your Pages function should return a Response");
+        }
+        return cloneResponse(response);
+      } else if ("ASSETS") {
+        const response = await env["ASSETS"].fetch(request);
+        return cloneResponse(response);
+      } else {
+        const response = await fetch(request);
+        return cloneResponse(response);
+      }
+    }, "next");
+    try {
+      return await next();
+    } catch (error) {
+      if (isFailOpen) {
+        const response = await env["ASSETS"].fetch(request);
+        return cloneResponse(response);
+      }
+      throw error;
+    }
+  }
+};
+var cloneResponse = /* @__PURE__ */ __name((response) => (
+  // https://fetch.spec.whatwg.org/#null-body-status
+  new Response(
+    [101, 204, 205, 304].includes(response.status) ? null : response.body,
+    response
+  )
+), "cloneResponse");
+export {
+  pages_template_worker_default as default
+};
+
+------formdata-undici-094990745100--

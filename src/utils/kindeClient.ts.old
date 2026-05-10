@@ -1,0 +1,20 @@
+// src/utils/kindeClient.ts
+import createKindeClient from "@kinde-oss/kinde-auth-pkce-js";
+
+let kindeClient = null;
+
+export const initializeKinde = async () => {
+    if (!kindeClient) {
+        kindeClient = await createKindeClient({
+            client_id: 'f725d84a80eb41a9a700a70cae669253',
+            domain: 'https://promptexecution.kinde.com',
+            redirect_uri: 'http://localhost:3000'
+        });
+    }
+    return kindeClient;
+};
+
+export const getKindeClient = () => {
+    return kindeClient;
+};
+

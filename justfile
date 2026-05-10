@@ -3,6 +3,11 @@ set shell := ["bash", "-cu"]
 default:
   @just --list
 
+install:
+  @b00t --path _b00t_ stack validate promptexecution-codex-profile
+  @b00t --path _b00t_ stack validate cloudflare-dev
+  @printf 'Project Codex MCP profile is minimal: b00t-mcp + codebase-memory. Cloudflare MCPs are tracked in _b00t_/cloudflare-dev.stack.toml for on-demand use. Restart Codex to load the active profile.\n'
+
 dev:
   @bun run build
   @bun run db:init:local
@@ -41,6 +46,15 @@ test-workflow:
     -H "Content-Type: application/json" \
     -d '{"force":"1"}' \
     http://127.0.0.1:8788/api/test-generate
+
+# Image Generation Pipeline
+image-generate day="2026-05-10":
+  @curl -X POST \
+    -H "Authorization: Bearer local-secret" \
+    http://127.0.0.1:8788/api/image-generate?day={{day}}
+
+image-generate-latest:
+  @just image-generate "$(date +%Y-%m-%d)"
 
 test-cron:
   @curl http://127.0.0.1:8790/cdn-cgi/handler/scheduled

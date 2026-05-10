@@ -1,0 +1,11 @@
+[b00t]
+name = "cloudflare-observability"
+type = "mcp"
+hint = "Cloudflare observability MCP for logs, metrics, and platform telemetry."
+
+[[b00t.mcp.stdio]]
+command = "npx"
+args = ["-y", "mcp-remote@latest", "https://observability.mcp.cloudflare.com/mcp"]
+transport = "stdio"
+priority = 0
+requires = []

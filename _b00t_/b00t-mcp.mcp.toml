@@ -1,0 +1,11 @@
+[b00t]
+name = "b00t-mcp"
+type = "mcp"
+hint = "Small b00t MCP front end for discovering and routing project capabilities on demand."
+
+[[b00t.mcp.stdio]]
+command = "b00t-mcp"
+args = ["--stdio"]
+transport = "stdio"
+priority = 0
+requires = []

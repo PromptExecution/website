@@ -1,0 +1,25 @@
+{
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Fix codebase-memory MCP install datum",
+      "description": "Codex startup fails: codebase-memory command /home/brianh/.b00t/vendor/codebase-memory-mcp-b00t-ir0n-ledg3rr/build/c/codebase-memory-mcp is missing. b00t install codebase-memory resolves the datum but has no install command and skips it. b00t mcp registry get/install-deps codebase-memory does not find a registry server. Add a b00t-native install path that builds or installs codebase-memory-mcp and updates the datum.",
+      "status": "done",
+      "priority": 1,
+      "tags": [
+        "mcp",
+        "codebase-memory",
+        "codex",
+        "b00t"
+      ],
+      "acceptance_criteria": [
+        "b00t install codebase-memory installs or builds the binary",
+        "b00t mcp output codebase-memory --json points to an existing executable",
+        "Codex can start codebase-memory without os error 2"
+      ],
+      "created_at": "2026-05-10T04:47:28Z",
+      "updated_at": "2026-05-10T05:40:46Z"
+    }
+  ],
+  "version": "1"
+}

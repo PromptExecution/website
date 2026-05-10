@@ -1,0 +1,115 @@
+# Comic Generation Pipeline (Ledgrrr Workflow)
+# A→B→C Pipeline: Script → SVG Description → Image Rendering
+# Status: MVP (manual trigger), ready for full ledgrrr orchestration
+
+# 🤓 This is a ledgrrr workflow scaffold. Uncomment stages as ledgrrr integration matures.
+# Currently implemented: direct API calls, no ledgrrr orchestration yet.
+
+[workflow]
+name = "comic-generation-pipeline"
+version = "0.1.0"
+description = "Multi-variant comic generation: script generation → SVG prompts → image rendering"
+
+# === Stage A: Comic Script Generation ===
+# Input: Day, topic, cast
+# Output: Two variant scripts (Gemma4 vs Qwen3)
+# Current implementation: functions/lib/agentic-comic-workflow.ts
+
+[[stages]]
+name = "script-generation"
+type = "parallel"
+description = "Generate two script variants in parallel"
+
+[stages.config]
+timeout_seconds = 300
+retry_on_failure = 3
+parallel_workers = 2
+
+[[stages.tasks]]
+id = "script-variant-a"
+model = "@cf/google/gemma-4-26b-a4b-it"
+type = "text-generation"
+
+[[stages.tasks]]
+id = "script-variant-b"
+model = "@cf/qwen/qwen3-30b-a3b-fp8"
+type = "text-generation"
+
+# === Stage B: SVG Description Generation ===
+# Input: Comic scripts from Stage A
+# Output: SVG layout descriptions + detailed image prompts
+# Current implementation: functions/lib/svg-prompt-generator.ts
+
+[[stages]]
+name = "svg-description"
+type = "map"
+description = "Convert scripts to SVG descriptions and image prompts"
+
+[stages.config]
+timeout_seconds = 60
+depends_on = ["script-generation"]
+
+# === Stage C: Image Rendering ===
+# Input: SVG descriptions from Stage B
+# Output: Generated comic images (JPEG)
+# Current implementation: functions/api/image-generate.ts
+
+[[stages]]
+name = "image-rendering"
+type = "parallel"
+description = "Render images from SVG descriptions"
+
+[stages.config]
+timeout_seconds = 120
+depends_on = ["svg-description"]
+parallel_workers = 2
+model = "@cf/black-forest-labs/flux-2-klein-4b"
+
+[[stages.tasks]]
+id = "render-variant-a"
+prompt_source = "svg-description"
+
+[[stages.tasks]]
+id = "render-variant-b"
+prompt_source = "svg-description"
+
+# === Storage & Indexing ===
+[[stages]]
+name = "artifact-storage"
+type = "sequential"
+description = "Store images in R2 and index in D1"
+
+[stages.config]
+depends_on = ["image-rendering"]
+storage_provider = "cloudflare-r2"
+index_provider = "cloudflare-d1"
+
+# === Validation & Reporting ===
+[[stages]]
+name = "validation"
+type = "sequential"
+description = "Verify image quality and metadata"
+
+[stages.config]
+depends_on = ["artifact-storage"]
+checks = ["image-not-empty", "metadata-present", "variant-count-matches"]
+
+# === DAG Summary ===
+# script-generation (A)
+#   ↓
+# svg-description (B)
+#   ↓
+# image-rendering (C)
+#   ↓
+# artifact-storage
+#   ↓
+# validation
+#   ↓
+# COMPLETE
+
+# 🤓 Future enhancements:
+# - ledgrrr validation checkpoints at each stage
+# - A/B scoring & comparison (via worker role)
+# - Ledger-based audit trail for all generations
+# - Conditional branching based on image quality scores
+# - Multi-provider A/B/C/D variant generation

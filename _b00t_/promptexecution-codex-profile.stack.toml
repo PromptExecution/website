@@ -1,0 +1,20 @@
+[b00t]
+name = "promptexecution-codex-profile"
+type = "stack"
+hint = "Project Codex MCP profile for PromptExecution website work."
+members = [
+  "b00t-mcp.mcp",
+  "codebase-memory.mcp",
+]
+
+[[b00t.usage]]
+description = "Install or refresh the project-local Codex MCP profile"
+command = "b00t install"
+
+[[b00t.usage]]
+description = "Inspect the project MCP stack"
+command = "b00t --path _b00t_ stack show promptexecution-codex-profile"
+
+[[b00t.usage]]
+description = "Discover optional Cloudflare MCPs without loading them into Codex by default"
+command = "b00t --path _b00t_ stack show cloudflare-dev"
