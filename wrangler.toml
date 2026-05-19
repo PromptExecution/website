@@ -35,8 +35,17 @@ binding = "COMICS_BUCKET"
 bucket_name = "llm-comics"
 
 [env.production.vars]
-SCRIPT_MODEL_A = "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b"
-SCRIPT_MODEL_B = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+SCRIPT_MODEL_LINEUP = """
+@cf/openai/gpt-oss-120b
+@cf/moonshotai/kimi-k2.6
+@cf/nvidia/nemotron-3-120b-a12b
+@cf/qwen/qwq-32b
+@cf/qwen/qwen3-30b-a3b-fp8
+@cf/deepseek-ai/deepseek-r1-distill-qwen-32b
+@cf/meta/llama-3.3-70b-instruct-fp8-fast
+@cf/meta/llama-4-scout-17b-16e-instruct
+@cf/google/gemma-4-26b-a4b-it
+"""
 TOPIC_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
 AUTO_GENERATE_ON_READ = "1"
 ALLOW_LOCAL_BOOTSTRAP = "1"

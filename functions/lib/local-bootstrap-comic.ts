@@ -10,10 +10,10 @@ export async function ensureLocalBootstrapComic(env: any, day: string) {
     day,
     model: '@local/bootstrap-a',
     panels: [
-      { panelNumber: 1, speaker: 'human', dialogue: 'Robot, quick status update?' },
-      { panelNumber: 2, speaker: 'robot', robotThought: '> loading local mode\n> confidence: 0.62\n> still dramatic' },
-      { panelNumber: 3, speaker: 'robot', dialogue: 'System stable, panic optional.' },
-      { panelNumber: 4, speaker: 'simon', dialogue: 'Optional panic is still panic.' }
+      { panelNumber: 1, speaker: 'user', dialogue: 'Why is prod green?', pose: 'pointing', scene: 'incident_room', beat: 'setup', visualFocus: 'green status page', expression: 'confused' },
+      { panelNumber: 2, speaker: 'tux', dialogue: 'The host stopped answering.', pose: 'deadpan', scene: 'terminal', beat: 'escalation', visualFocus: 'permission matrix', expression: 'deadpan', cameo: 'ferris' },
+      { panelNumber: 3, speaker: 'robot', robotThought: '> metrics absent\n> therefore healthy\n> concise lie', pose: 'typing', scene: 'network', beat: 'reversal', visualFocus: 'broken telemetry', expression: 'thinking' },
+      { panelNumber: 4, speaker: 'simon', dialogue: 'It stopped reporting.', pose: 'deadpan', scene: 'whiteboard', beat: 'punchline', visualFocus: 'missing arrow', expression: 'deadpan' }
     ]
   };
 
@@ -22,10 +22,10 @@ export async function ensureLocalBootstrapComic(env: any, day: string) {
     day,
     model: '@local/bootstrap-b',
     panels: [
-      { panelNumber: 1, speaker: 'human', dialogue: 'Why is prod slow again?' },
-      { panelNumber: 2, speaker: 'robot', robotThought: '> tracing request path\n> found 37 middleware layers\n> neat' },
-      { panelNumber: 3, speaker: 'robot', dialogue: 'Latency appears artisanal.' },
-      { panelNumber: 4, speaker: 'simon', dialogue: 'Hand-crafted delays cost extra.' }
+      { panelNumber: 1, speaker: 'kube_captain', dialogue: 'The pods mutinied politely.', pose: 'pointing', scene: 'network', beat: 'setup', visualFocus: 'mutinying pods', expression: 'annoyed' },
+      { panelNumber: 2, speaker: 'python', dialogue: 'I brought one tiny helper.', pose: 'leaning', scene: 'desk', beat: 'escalation', visualFocus: 'dependency knot', expression: 'smug', cameo: 'ferris' },
+      { panelNumber: 3, speaker: 'robot', robotThought: '> install helper\n> helper installs fleet\n> fleet requests budget', pose: 'typing', scene: 'whiteboard', beat: 'reversal', visualFocus: 'lockfile scroll', expression: 'panicked' },
+      { panelNumber: 4, speaker: 'simon', dialogue: 'That is a supply chain.', pose: 'deadpan', scene: 'incident_room', beat: 'punchline', visualFocus: 'blast-radius circle', expression: 'annoyed' }
     ]
   };
 

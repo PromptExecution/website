@@ -7,7 +7,7 @@ FILE: src/components/TheXTerm.vue
 
 
 <template>
-  <div class="cli-container">
+  <div class="cli-container" @pointerdown="focusTerminal">
   <Terminal ref="terminalRef" class="Terminal" name="my-terminal"
     context="~"
     context-suffix=" $ "
@@ -50,6 +50,23 @@ const enableComicEngine = () => {
   window.dispatchEvent(new CustomEvent('pe-enable-comic'));
 };
 
+const normalizeTerminalCommand = (value: unknown) => String(value || '').trim().toLowerCase();
+
+const isComicCommand = (key: unknown, command: unknown) => {
+  const normalizedKey = normalizeTerminalCommand(key);
+  const normalizedCommand = normalizeTerminalCommand(command);
+  return ['😁', 'comic', 'comics', 'enable-comic', 'enable comics'].includes(normalizedKey)
+    || ['😁', 'comic', 'comics', 'enable-comic', 'enable comics'].includes(normalizedCommand);
+};
+
+const pushComicEnabledMessage = () => {
+  TerminalApiInstance.pushMessage("my-terminal", {
+    type: 'normal',
+    class: 'success',
+    content: 'Comic engine enabled.',
+  });
+};
+
 const resetAndStartIdleTimer = () => {
   clearTimeout(idleTimer);
   idleTimer = setTimeout(onIdle, idleDelay) as unknown as number;
@@ -67,6 +84,10 @@ const handleMessage = (event: any) => {
 
 };
 
+const focusTerminal = () => {
+  resetAndStartIdleTimer();
+  TerminalApiInstance.focus("my-terminal", true);
+};
 
 const onIdle = () => {
   //  true or false
@@ -165,15 +186,14 @@ const onBeforeExecuteCommand = ({ command }: { command: Command }) => {
 // const executeCommand = inject('executeCommand') as (command: string) => void;
 // const vueCommandRef = ref(null);
 
-// Update your event listeners to stop animation on activity
-window.addEventListener('mousemove', () => {
+const handleTerminalActivity = () => {
   resetAndStartIdleTimer();
   stopTextAnimation();
-});
-window.addEventListener('keypress', () => {
-  resetAndStartIdleTimer();
-  stopTextAnimation();
-});
+};
+
+window.addEventListener('pointermove', handleTerminalActivity);
+window.addEventListener('keydown', handleTerminalActivity);
+window.addEventListener('input', handleTerminalActivity);
 
 onMounted(() => {
   // Don't start idle timer here - wait for terminal initialization
@@ -183,20 +203,21 @@ onMounted(() => {
 
   const instance = getCurrentInstance() as ComponentInternalInstance;
   setTimeout(() => {
-      if (instance?.appContext.app.config.globalProperties.$socket) {
-        // Socket already connected
-        return;
-      }
-      // Connect via the global properties
-      if (instance?.appContext.app.config.globalProperties.$connect) {
-        instance.appContext.app.config.globalProperties.$connect();
-      }
-    }, 100);});
+    const globalProperties = instance?.appContext.app.config.globalProperties;
+    if (!globalProperties?.$connect || globalProperties.$socket) {
+      return;
+    }
+    globalProperties.$connect();
+  }, 100);
+});
 
 onUnmounted(() => {
   stopTextAnimation(); // Stop the text animation when the component is destroyed
   clearTimeout(idleTimer); // Clear the timer when the component is destroyed
   clearTextAnimation(); // Clear the text animation when the component is destroyed
+  window.removeEventListener('pointermove', handleTerminalActivity);
+  window.removeEventListener('keydown', handleTerminalActivity);
+  window.removeEventListener('input', handleTerminalActivity);
 });
 
 
@@ -211,10 +232,12 @@ const onExecCmd = (
   success: SuccessCallback,
   failed: FailedCallback
 ) => {
-  if (key === 'fail') {
+  const normalizedKey = normalizeTerminalCommand(key);
+
+  if (normalizedKey === 'fail') {
     failed('Something wrong!!!');
   }
-  else if (key === "hello") {
+  else if (normalizedKey === "hello") {
     success({
       type: 'normal',
       class: 'success',
@@ -222,7 +245,7 @@ const onExecCmd = (
       content: 'world'
     })
   }
-  else if (key === "meet") {
+  else if (normalizedKey === "meet") {
     // TODO: open a new window
     success({
       type: 'normal',
@@ -231,7 +254,7 @@ const onExecCmd = (
       content: '<a href="https://calendar.google.com/calendar/appointments/schedules/AcZssZ1PPmxcLlDdPZF1BMHQaADaO7or9b7sXrljq7co6Fu3bZLO9x_YmzH8JkynDEwzSrgdqh5Y-4s1">calendar</a>'
     })
   }
-  else if (key === "😁") {
+  else if (isComicCommand(key, command)) {
     enableComicEngine();
     success({
       type: 'normal',
@@ -300,7 +323,7 @@ const commandStore = [
   {
     key: '😁',
     title: 'Enable comic mode.',
-    usage: '😁',
+    usage: '😁 | comic',
     example: [
       {
         cmd: '😁',
@@ -309,11 +332,22 @@ const commandStore = [
     ],
     exec: () => {
       enableComicEngine();
-      TerminalApiInstance.pushMessage("my-terminal",{
-        type: 'normal',
-        class: 'success',
-        content: 'Comic engine enabled.',
-      })
+      pushComicEnabledMessage();
+    }
+  },
+  {
+    key: 'comic',
+    title: 'Enable comic mode.',
+    usage: 'comic',
+    example: [
+      {
+        cmd: 'comic',
+        des: 'Switch from CLI-only mode to Comic mode.',
+      }
+    ],
+    exec: () => {
+      enableComicEngine();
+      pushComicEnabledMessage();
     }
   }
 ]
@@ -394,6 +428,34 @@ const commandStore = [
 :deep(.t-last-line) {
   margin-top: auto !important;
   margin-bottom: 4px !important;
+}
+
+:deep(.cursor) {
+  display: inline-block !important;
+  width: 0.62em !important;
+  min-width: 0.62em;
+  height: 1.1em !important;
+  margin-top: 0 !important;
+  background-color: #7dffa5 !important;
+  box-shadow: 0 0 8px rgba(125, 255, 165, 0.75);
+  opacity: 1;
+  animation: pe-terminal-cursor-blink 0.86s steps(2, start) infinite !important;
+}
+
+:deep(.t-cmd-input) {
+  caret-color: #7dffa5;
+}
+
+@keyframes pe-terminal-cursor-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  46%,
+  100% {
+    opacity: 0;
+  }
 }
 
 @media (max-width: 767px) {

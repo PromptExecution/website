@@ -7,8 +7,7 @@ import App from './App.vue'
 import VueGtag from "vue-gtag-next";
 import { VueCookieNext } from 'vue-cookie-next';
 import VueNativeSock from "vue-native-websocket-vue3";
-// @ts-ignore - TypeScript can't resolve the export but it exists at runtime
-import { createTerminal } from 'vue-web-terminal';
+import Terminal from 'vue-web-terminal';
 
 import { useSocketStoreWithOut } from "./store/pinia/useSocketStore";
 
@@ -31,11 +30,11 @@ app.use(VueGtag, {
 });
 
 // Register vue-web-terminal (required for TerminalApi to work)
-app.use(createTerminal());
+app.use(Terminal);
 
-app.mount('#app');
-
-app.use(VueNativeSock,"ws://fung1.lan:8080",{
+const terminalWebSocketUrl = import.meta.env.VITE_TERMINAL_WS_URL;
+if (terminalWebSocketUrl) {
+  app.use(VueNativeSock, terminalWebSocketUrl, {
     // 启用pinia集成 | enable pinia integration
     // store: piniaSocketStore(),
     // 数据发送/接收使用使用json
@@ -48,6 +47,9 @@ app.use(VueNativeSock,"ws://fung1.lan:8080",{
     reconnectionAttempts: 5,
     // 重连间隔时间
     reconnectionDelay: 3000
-});
+  });
+}
+
+app.mount('#app');
 
 export default app;

@@ -1,5 +1,6 @@
 // src/types/vue-web-terminal.d.ts
 declare module 'vue-web-terminal' {
+import type { Plugin } from 'vue'
 
 export interface EditorConfig {
     open: boolean
@@ -291,5 +292,8 @@ export interface EditorSetting {
     content: string,
     onClose: Function
 }
+
+const Terminal: Plugin
+export default Terminal
 
 }

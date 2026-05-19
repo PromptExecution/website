@@ -1,11 +1,22 @@
 import { CAST, getCharacterById, pickCharactersExcluding, type CastCharacter } from './cast.ts';
-import { generateComicScript, type ComicScript } from './comic-generator.ts';
+import { generateComicScript, type ComicImprovMenu, type ComicScript } from './comic-generator.ts';
 import { renderComicToSVG } from './svg-renderer.ts';
 import { invokeWorkflow, type AuditEntry } from './ledgrrr-mcp-client.ts';
 
 const DEFAULT_SCRIPT_MODEL_A = '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b';
 const DEFAULT_SCRIPT_MODEL_B = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const DEFAULT_TOPIC_MODEL = '@cf/qwen/qwen3-30b-a3b-fp8';
+const DEFAULT_SCRIPT_MODEL_LINEUP = [
+  '@cf/openai/gpt-oss-120b',
+  '@cf/moonshotai/kimi-k2.6',
+  '@cf/nvidia/nemotron-3-120b-a12b',
+  '@cf/qwen/qwq-32b',
+  '@cf/qwen/qwen3-30b-a3b-fp8',
+  '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+  '@cf/meta/llama-4-scout-17b-16e-instruct',
+  '@cf/google/gemma-4-26b-a4b-it'
+];
 
 const FALLBACK_TOPICS = [
   'prompt injection incident in production',
@@ -17,7 +28,147 @@ const FALLBACK_TOPICS = [
   'mysterious authentication timeout after lunch',
   'cost optimization meeting that increases costs',
   'SRE on-call handoff gone sideways',
-  'passive aggressive status page update'
+  'passive aggressive status page update',
+  'Python notebook becomes the production scheduler',
+  'Linux permissions explain the cloud outage',
+  'readiness probe passes by avoiding the service',
+  'virtual environment copied into a container image',
+  'runbook optimized until no steps remain',
+  'service mesh debug session with too many mirrors',
+  'cron job timezone argument at the postmortem',
+  'dependency resolver negotiates with yesterday',
+  'feature flag dashboard lies by omission',
+  'secret rotation scheduled during incident response',
+  'observability bill outgrows the application',
+  'YAML anchor creates a leadership structure'
+];
+
+const SCENARIO_SETUPS = [
+  {
+    id: 'postmortem-whiteboard',
+    label: 'postmortem whiteboard with a wrong causal arrow',
+    sceneHints: ['whiteboard', 'incident_room', 'meeting'],
+    prop: 'wrong causal arrow',
+    tension: 'everyone agrees on the remediation before identifying the cause'
+  },
+  {
+    id: 'deploy-terminal',
+    label: 'deploy terminal beside a suspiciously cheerful status page',
+    sceneHints: ['terminal', 'incident_room', 'network'],
+    prop: 'green status page',
+    tension: 'the dashboard is healthy because the broken service stopped reporting'
+  },
+  {
+    id: 'architecture-review',
+    label: 'architecture review where every box is labeled temporary',
+    sceneHints: ['whiteboard', 'network', 'meeting'],
+    prop: 'temporary boxes',
+    tension: 'the workaround has more governance than the system'
+  },
+  {
+    id: 'standup-escalation',
+    label: 'standup meeting with a single ticket spanning the wall',
+    sceneHints: ['meeting', 'desk', 'terminal'],
+    prop: 'oversized ticket',
+    tension: 'the estimate is precise because nobody understands the work'
+  },
+  {
+    id: 'cache-mystery',
+    label: 'network diagram where the cache is drawn as a trap door',
+    sceneHints: ['network', 'whiteboard', 'terminal'],
+    prop: 'cache trap door',
+    tension: 'the fix works only for requests that already worked'
+  },
+  {
+    id: 'prompt-lab',
+    label: 'prompt debugging desk covered in tiny failed hypotheses',
+    sceneHints: ['desk', 'terminal', 'whiteboard'],
+    prop: 'failed hypotheses',
+    tension: 'the prompt is stable until it reads the requirements'
+  },
+  {
+    id: 'filesystem-autopsy',
+    label: 'server desk where permission bits are bigger than the cloud diagram',
+    sceneHints: ['desk', 'terminal', 'whiteboard'],
+    prop: 'oversized permission bits',
+    tension: 'the expensive platform problem is actually chmod'
+  },
+  {
+    id: 'dependency-knot',
+    label: 'dependency graph knotted around a production notebook',
+    sceneHints: ['whiteboard', 'desk', 'terminal'],
+    prop: 'dependency knot',
+    tension: 'the one-line helper script has become the release process'
+  },
+  {
+    id: 'cluster-bridge',
+    label: 'Kubernetes bridge where pods are labeled like an anxious crew',
+    sceneHints: ['network', 'incident_room', 'terminal'],
+    prop: 'mutinying pods',
+    tension: 'the rollout strategy assumes the containers will obey orders'
+  },
+  {
+    id: 'billing-forensics',
+    label: 'cost dashboard projected over a tiny useful service',
+    sceneHints: ['meeting', 'network', 'whiteboard'],
+    prop: 'ballooning invoice',
+    tension: 'the monitoring is more available than the product'
+  },
+  {
+    id: 'secret-rotation',
+    label: 'incident room where every sticky note says rotated?',
+    sceneHints: ['incident_room', 'terminal', 'desk'],
+    prop: 'rotated secret notes',
+    tension: 'nobody knows which credential is old enough to trust'
+  },
+  {
+    id: 'timezone-cron',
+    label: 'desk calendar arguing with a cron log',
+    sceneHints: ['desk', 'terminal', 'incident_room'],
+    prop: 'timezone calendar',
+    tension: 'the job ran exactly on schedule in the wrong reality'
+  },
+  {
+    id: 'flag-museum',
+    label: 'feature flag dashboard arranged like an archaeological dig',
+    sceneHints: ['whiteboard', 'meeting', 'terminal'],
+    prop: 'ancient feature flags',
+    tension: 'every safety switch is load-bearing'
+  }
+];
+
+const PROP_ENTROPY = [
+  'packet capture printout',
+  'sticky-note causal chain',
+  'tiny pager with huge alarm lines',
+  'half-erased runbook',
+  'labeled blast-radius circle',
+  'dependency lockfile scroll',
+  'service map with crossed arrows',
+  'rotating secret key tag',
+  'permission matrix',
+  'pod manifest wanted poster',
+  'shell history receipt',
+  'dashboard with one honest metric',
+  'queue depth ruler',
+  'cache key family tree',
+  'timezone wall clock',
+  'rollback lever',
+  'invoice taller than the server',
+  'token bucket bucket',
+  'SLO gravestone',
+  'staging/prod light switch'
+];
+
+const SCENARIO_MODIFIERS = [
+  'seen from the person who has to clean it up',
+  'where the obvious prop contradicts the dialogue',
+  'with the root cause visible but ignored',
+  'as a physical room full of software artifacts',
+  'with one tiny object carrying the whole joke',
+  'where the dashboard and terminal disagree',
+  'with the cast arguing over definitions instead of facts',
+  'where the fix is visually worse than the bug'
 ];
 
 export interface WorkflowStepLog {
@@ -37,6 +188,8 @@ export interface ComicWorkflowResult {
   cast: CastCharacter[];
   topic_candidates: string[];
   selected_topic: string;
+  scenario_setup: ScenarioSetup;
+  improv_menu: ComicImprovMenu;
   model_a: string;
   model_b: string;
   prompt_a: string;
@@ -47,6 +200,7 @@ export interface ComicWorkflowResult {
     log: string;
     cast: string;
     topics: string;
+    improv_menu: string;
     prompt_a: string;
     prompt_b: string;
   };
@@ -66,8 +220,18 @@ interface ComicPlan {
   cast: CastCharacter[];
   topic_candidates: string[];
   selected_topic: string;
+  scenario_setup: ScenarioSetup;
+  improv_menu: ComicImprovMenu;
   prompt_a: string;
   prompt_b: string;
+}
+
+interface ScenarioSetup {
+  id: string;
+  label: string;
+  sceneHints: string[];
+  prop: string;
+  tension: string;
 }
 
 export async function previewAgenticPromptPlan(env: any, options: { day: string; force_topic?: string; trigger: 'cron' | 'manual'; }) {
@@ -82,8 +246,8 @@ export async function previewAgenticPromptPlan(env: any, options: { day: string;
 export async function runAgenticComicWorkflow(env: any, options: { day: string; force_topic?: string; trigger: 'cron' | 'manual'; }) {
   const workflowLog: WorkflowStepLog[] = [];
   const plan = await buildComicPlan(env, options, workflowLog);
-  const modelA = env.SCRIPT_MODEL_A || env.COMIC_MODEL_A || env.IMAGE_MODEL_A || DEFAULT_SCRIPT_MODEL_A;
-  const modelB = env.SCRIPT_MODEL_B || env.COMIC_MODEL_B || env.IMAGE_MODEL_B || DEFAULT_SCRIPT_MODEL_B;
+  const [modelA, modelB] = pickScriptModels(env, plan.run_id);
+  workflowLog.push(makeStep('select-script-models', 'ok', `Selected variant models: A=${modelA}, B=${modelB}.`));
 
   const variantA = await generateScriptVariant(env, modelA, plan, workflowLog, 'variant-a', 'prioritize the cleanest joke structure and readable dialogue.', modelB);
   const variantB = await generateScriptVariant(env, modelB, plan, workflowLog, 'variant-b', 'prioritize sharper escalation and a meaner final punchline.', modelA);
@@ -100,6 +264,7 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     env.COMICS_BUCKET.put(`${artifactPrefix}/workflow-log.json`, JSON.stringify(workflowLog, null, 2), { httpMetadata: { contentType: 'application/json' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/cast.json`, JSON.stringify(plan.cast, null, 2), { httpMetadata: { contentType: 'application/json' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/topics.json`, JSON.stringify(plan.topic_candidates, null, 2), { httpMetadata: { contentType: 'application/json' } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/improv-menu.json`, JSON.stringify(plan.improv_menu, null, 2), { httpMetadata: { contentType: 'application/json' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/prompt-a.txt`, plan.prompt_a, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/prompt-b.txt`, plan.prompt_b, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/script-a.json`, JSON.stringify(variantA.script, null, 2), { httpMetadata: { contentType: 'application/json' } }),
@@ -200,6 +365,7 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     cast: plan.cast,
     topic_candidates: plan.topic_candidates,
     selected_topic: plan.selected_topic,
+    scenario_setup: plan.scenario_setup,
     model_a: variantA.script.model,
     model_b: variantB.script.model,
     prompt_a: plan.prompt_a,
@@ -210,6 +376,7 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
       log: `${artifactPrefix}/workflow-log.json`,
       cast: `${artifactPrefix}/cast.json`,
       topics: `${artifactPrefix}/topics.json`,
+      improv_menu: `${artifactPrefix}/improv-menu.json`,
       prompt_a: `${artifactPrefix}/prompt-a.txt`,
       prompt_b: `${artifactPrefix}/prompt-b.txt`
     },
@@ -244,12 +411,16 @@ async function buildComicPlan(
 
   const topicCandidates = await suggestTopics(env, chosenCast, panelCount, random, workflowLog);
   const selectedTopic = options.force_topic || topicCandidates[randomInt(random, 0, topicCandidates.length - 1)];
+  const scenarioSetup = buildScenarioSetup(random, selectedTopic, chosenCast);
+  const improvMenu = buildImprovMenu(random, selectedTopic, chosenCast, scenarioSetup);
   const title = makeComicTitle(selectedTopic);
 
   const promptBase = buildStandardPrompt({
     panelCount,
     cast: chosenCast,
-    topic: selectedTopic
+    topic: selectedTopic,
+    scenario: scenarioSetup,
+    improvMenu,
   });
 
   const promptA = `${promptBase}\nVariant directive: prioritize crisp setup, exact terminology, and readable punchlines.`;
@@ -266,6 +437,8 @@ async function buildComicPlan(
     cast: chosenCast,
     topic_candidates: topicCandidates,
     selected_topic: selectedTopic,
+    scenario_setup: scenarioSetup,
+    improv_menu: improvMenu,
     prompt_a: promptA,
     prompt_b: promptB
   };
@@ -285,11 +458,14 @@ async function suggestTopics(
   }
 
   const model = env.TOPIC_MODEL || env.SCRIPT_MODEL_A || DEFAULT_TOPIC_MODEL;
-  const systemPrompt = 'You are a technical humor prompt planner. Return JSON only: {"topics":["...", "...", "..."]}';
+  const systemPrompt = 'You are a technical humor prompt planner. Return JSON only: {"topics":["...", "...", "...", "...", "...", "..."]}';
   const userPrompt = [
-    `Create 3 concise comic topic candidates for an xkcd-style technical comic.`,
+    `Create 6 diverse comic topic candidates for an xkcd-style technical comic.`,
     `Panel count: ${panelCount}`,
     `Cast: ${cast.map((c) => `${c.name} (${c.role})`).join(', ')}`,
+    `Character idea spaces: ${cast.flatMap((c) => c.idea_space || []).slice(0, 18).join(', ')}`,
+    'Favor unusual but drawable technical situations: physicalized software artifacts, contradictory dashboards, awkward operational rituals, strange props, and specific failure modes.',
+    'Avoid repeating postmortem/standup/cache/setup templates unless the topic has a fresh visual hook.',
     `Rules: each topic must be specific, practical, and under 12 words.`
   ].join('\n');
 
@@ -306,10 +482,10 @@ async function suggestTopics(
     const raw = response?.response || JSON.stringify(response);
     const parsed = parseJsonFromText(raw);
     const topics = Array.isArray(parsed?.topics)
-      ? parsed.topics.map((topic: any) => String(topic).trim()).filter(Boolean).slice(0, 3)
+      ? parsed.topics.map((topic: any) => String(topic).trim()).filter(Boolean).slice(0, 6)
       : [];
 
-    if (topics.length === 3) {
+    if (topics.length >= 3) {
       workflowLog.push(makeStep('suggest-topics', 'ok', `Generated topic candidates using ${model}.`));
       return topics;
     }
@@ -326,19 +502,163 @@ function pickFallbackTopics(random: () => number, cast: CastCharacter[]): string
   const pool = [...FALLBACK_TOPICS];
   const selected: string[] = [];
 
-  while (selected.length < 3 && pool.length > 0) {
+  while (selected.length < 6 && pool.length > 0) {
     const idx = Math.floor(random() * pool.length);
     selected.push(pool[idx]);
     pool.splice(idx, 1);
   }
 
-  if (selected.length < 3) {
-    while (selected.length < 3) {
+  if (selected.length < 6) {
+    while (selected.length < 6) {
       selected.push(`unexpected ${cast[0]?.name || 'robot'} behavior in production`);
     }
   }
 
   return selected;
+}
+
+function buildScenarioSetup(random: () => number, topic: string, cast: CastCharacter[]): ScenarioSetup {
+  const base = SCENARIO_SETUPS[randomInt(random, 0, SCENARIO_SETUPS.length - 1)];
+  const characterIdeas = cast.flatMap((character) => character.idea_space || []);
+  const idea = characterIdeas.length > 0
+    ? characterIdeas[randomInt(random, 0, characterIdeas.length - 1)]
+    : topic;
+  const prop = randomChoice(random, [
+    base.prop,
+    ...PROP_ENTROPY,
+    ...cast.flatMap((character) => character.drawable_features || []),
+  ]);
+  const modifier = randomChoice(random, SCENARIO_MODIFIERS);
+  const scenes = shuffle(random, [...base.sceneHints, ...pickExtraScenes(random)]);
+
+  return {
+    id: `${base.id}-${hashToUInt32(`${topic}:${prop}:${modifier}`).toString(16).slice(0, 6)}`,
+    label: `${base.label}, ${modifier}`,
+    sceneHints: scenes.slice(0, 4),
+    prop,
+    tension: `${base.tension}; pressure comes from ${idea}`
+  };
+}
+
+function buildImprovMenu(random: () => number, topic: string, cast: CastCharacter[], scenario: ScenarioSetup): ComicImprovMenu {
+  const optionalCharacters = cast
+    .map((character) => character.id)
+    .filter((id) => !['user', 'robot', 'ferris'].includes(id));
+  const characterChoices = uniqueStrings([
+    'user',
+    'robot',
+    ...shuffle(random, optionalCharacters).slice(0, 2),
+  ]);
+  const toolChoices = shuffle(random, [
+    'shell history',
+    'kubectl rollout',
+    'readiness probe',
+    'dependency resolver',
+    'virtualenv',
+    'systemd timer',
+    'feature flag',
+    'secret rotator',
+    'packet capture',
+    'cost dashboard',
+    'runbook',
+    'lockfile',
+  ]).slice(0, 4);
+  const subjectChoices = uniqueStrings(shuffle(random, [
+    topic,
+    scenario.tension,
+    ...cast.flatMap((character) => character.idea_space || []),
+  ]).slice(0, 4));
+  const propChoices = uniqueStrings(shuffle(random, [
+    scenario.prop,
+    ...PROP_ENTROPY,
+    ...cast.flatMap((character) => character.drawable_features || []),
+  ]).slice(0, 5));
+  const runningGags = shuffle(random, [
+    'dashboard disagrees with terminal',
+    'tiny helper becomes infrastructure',
+    'fix works by hiding evidence',
+    'root cause is visible in panel one',
+    'manager renames failure as autonomy',
+    'animal mascot notices the real bug',
+    'the safest option is least impressive',
+  ]).slice(0, 3);
+
+  return {
+    characters: characterChoices,
+    tools: toolChoices,
+    subjects: subjectChoices,
+    props: propChoices,
+    runningGags,
+    cameoChoices: ['ferris'],
+  };
+}
+
+function pickScriptModels(env: any, seedInput: string): [string, string] {
+  const pinnedA = normalizeModelName(env.SCRIPT_MODEL_A || env.COMIC_MODEL_A || env.IMAGE_MODEL_A);
+  const pinnedB = normalizeModelName(env.SCRIPT_MODEL_B || env.COMIC_MODEL_B || env.IMAGE_MODEL_B);
+
+  if (pinnedA && pinnedB && pinnedA !== pinnedB) {
+    return [pinnedA, pinnedB];
+  }
+
+  const lineup = parseModelLineup(env.SCRIPT_MODEL_LINEUP || env.COMIC_MODEL_LINEUP);
+  const models = uniqueModels([
+    ...(pinnedA ? [pinnedA] : []),
+    ...(pinnedB ? [pinnedB] : []),
+    ...lineup,
+    ...DEFAULT_SCRIPT_MODEL_LINEUP,
+    DEFAULT_SCRIPT_MODEL_A,
+    DEFAULT_SCRIPT_MODEL_B,
+  ]);
+
+  if (models.length === 1) {
+    return [models[0], models[0]];
+  }
+
+  const random = createSeededRng(hashToUInt32(`script-models:${seedInput}`));
+  const firstIndex = randomInt(random, 0, models.length - 1);
+  let secondIndex = randomInt(random, 0, models.length - 2);
+  if (secondIndex >= firstIndex) secondIndex += 1;
+
+  return [models[firstIndex], models[secondIndex]];
+}
+
+function parseModelLineup(input: unknown): string[] {
+  if (Array.isArray(input)) {
+    return input.map(normalizeModelName).filter(Boolean) as string[];
+  }
+
+  const raw = String(input || '').trim();
+  if (!raw) return [];
+
+  if (raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map(normalizeModelName).filter(Boolean) as string[];
+      }
+    } catch {
+      // Fall through to delimiter parsing.
+    }
+  }
+
+  return raw
+    .split(/[\n,]+/)
+    .map(normalizeModelName)
+    .filter(Boolean) as string[];
+}
+
+function uniqueModels(models: string[]): string[] {
+  return [...new Set(models.map(normalizeModelName).filter(Boolean) as string[])];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function normalizeModelName(input: unknown): string | undefined {
+  const model = String(input || '').trim();
+  return model || undefined;
 }
 
 async function generateScriptVariant(
@@ -365,6 +685,7 @@ async function generateScriptVariant(
       panelCount: plan.panel_count,
       cast: plan.cast,
       variantDirective,
+      improvMenu: plan.improv_menu,
     });
     workflowLog.push(makeStep(stepName, 'ok', `Generated scripted SVG comic with ${script.model}.`));
     return { script };
@@ -374,11 +695,15 @@ async function generateScriptVariant(
   }
 }
 
-function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[]; topic: string; }): string {
+function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[]; topic: string; scenario: ScenarioSetup; improvMenu: ComicImprovMenu; }): string {
   const castLines = input.cast.map((char, idx) => (
     `${idx + 1}. ${char.name} (${char.role})` +
     `\n   Description: ${char.description}` +
+    `\n   Voice: ${char.voice}` +
     `\n   Visual cues: ${char.visual_traits.join(', ')}` +
+    (char.behaviors?.length ? `\n   Character behaviors to use: ${char.behaviors.join('; ')}` : '') +
+    (char.idea_space?.length ? `\n   Topic territory: ${char.idea_space.join(', ')}` : '') +
+    (char.drawable_features?.length ? `\n   Drawable features: ${char.drawable_features.join(', ')}` : '') +
     `\n   Sample reference: ${char.sample_image}`
   )).join('\n');
 
@@ -389,12 +714,28 @@ function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[];
     `Layout: exactly ${input.panelCount} panels.`,
     'Each panel should advance the joke and remain easy to typeset.',
     `Topic: ${input.topic}`,
+    `Scenario setup: ${input.scenario.label}.`,
+    `Scenario tension: ${input.scenario.tension}.`,
+    `Required recurring visual motif or prop: ${input.scenario.prop}.`,
+    `Preferred scene progression: ${input.scenario.sceneHints.join(' -> ')}.`,
+    'Both model variants receive this same limited improv menu. Pick the funniest coherent subset instead of inventing from the full universe.',
+    `Character choices: ${input.improvMenu.characters.join(', ')}.`,
+    `Tool choices: ${input.improvMenu.tools.join(', ')}.`,
+    `Subject choices: ${input.improvMenu.subjects.join(', ')}.`,
+    `Prop choices: ${input.improvMenu.props.join(', ')}.`,
+    `Running gag choices: ${input.improvMenu.runningGags.join(', ')}.`,
+    `Cameo choices: ${input.improvMenu.cameoChoices.join(', ')}.`,
+    'Entropy requirement: each panel needs a distinct visible prop or staging idea; do not solve every setup with a whiteboard, terminal, meeting, or status page.',
+    'Character requirement: optional cast members must change the joke mechanics through their behaviors, not merely appear as labels.',
     'Recurring cast bible:',
     '- The User is a plain round-head stick figure who asks vague, underspecified questions.',
     '- The LLM Robot is a square-head stick figure with an antenna. Its internal monologue appears in a cloud thought bubble using a technical monospace style.',
-    '- Simon is a BOFH sysadmin with a fedora and grey goatee. He is dry, cynical, and usually lands the correction or punchline.',
+    '- Simon is a BOFH sysadmin with square glasses, a fedora, and grey goatee. He is dry, cynical, and usually lands the correction or punchline.',
     '- The Boss wears a tie and talks like an AI hype manager.',
     '- Ferris is a silent crab cameo or panic signal in the background.',
+    '- Tux is a Linux penguin: use host/filesystem/package/kernel pragmatism and draw penguin features.',
+    '- Python is a snake: use dependency/runtime/notebook/indentation traps and draw a curving snake body.',
+    '- Kubernetes Captain wears a pirate captain hat and has a peg leg: use pod/rollout/probe/YAML nautical command logic.',
     'Characters to include:',
     castLines,
     'Scene requirements:',
@@ -403,6 +744,7 @@ function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[];
     '- Keep Simon deadpan if Simon is present.',
     '- Use dry systems-thinking humor about failure modes, architecture, operations, or specification gaps.',
     '- Prefer concrete nouns: deploy, cache key, rollback, runbook, timeout, queue, incident.',
+    '- Prefer concrete visual nouns beyond the usual set: lockfiles, keys, clocks, levers, invoices, manifests, buckets, probes, flags, receipts, labels.',
     '- Avoid generic "AI is weird" jokes.',
     '- No watermark, no sponsor copy, no unrelated text.'
   ].join('\n');
@@ -437,6 +779,23 @@ function createSeededRng(seed: number): () => number {
 
 function randomInt(rand: () => number, min: number, max: number): number {
   return Math.floor(rand() * (max - min + 1)) + min;
+}
+
+function randomChoice<T>(rand: () => number, values: T[]): T {
+  return values[randomInt(rand, 0, values.length - 1)];
+}
+
+function shuffle<T>(rand: () => number, values: T[]): T[] {
+  const copy = [...values];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(rand, 0, index);
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+}
+
+function pickExtraScenes(rand: () => number): string[] {
+  return shuffle(rand, ['terminal', 'whiteboard', 'incident_room', 'meeting', 'network', 'desk', 'plain']).slice(0, 2);
 }
 
 function hashToUInt32(input: string): number {
