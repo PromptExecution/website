@@ -1094,12 +1094,12 @@ function detectScene(panel: ComicPanel): ComicScene {
   }
 
   const haystack = `${panel.action || ''} ${panel.dialogue || ''} ${panel.robotThought || ''} ${panel.visualFocus || ''}`.toLowerCase();
-  if (/\bwhiteboard|diagram|arrow|architecture|schema|chart\b/.test(haystack)) return 'whiteboard';
-  if (/\bincident|outage|pager|status|sev|war room|rollback|postmortem\b/.test(haystack)) return 'incident_room';
-  if (/\bmeeting|standup|roadmap|kpi|slide|stakeholder|executive\b/.test(haystack)) return 'meeting';
-  if (/\bdns|tcp|packet|cache|cdn|api|queue|service|network\b/.test(haystack)) return 'network';
+  if (/\b(?:whiteboard|diagram|arrow|architecture|schema|chart)\b/.test(haystack)) return 'whiteboard';
+  if (/\b(?:incident|outage|pager|status|sev|war room|rollback|postmortem)\b/.test(haystack)) return 'incident_room';
+  if (/\b(?:meeting|standup|roadmap|kpi|slide|stakeholder|executive)\b/.test(haystack)) return 'meeting';
+  if (/\b(?:dns|tcp|packet|cache|cdn|api|queue|service|network)\b/.test(haystack)) return 'network';
   if (/\b(type|typing|terminal|deploy|build|compile|keyboard|cursor|shell|screen|monitor|reply|debug|logs?|ssh|kubectl|merge|commit|branch|prod|production|prompt|code)\b/.test(haystack)) return 'terminal';
-  if (/\bdesk|laptop|coffee|keyboard|chair\b/.test(haystack)) return 'desk';
+  if (/\b(?:desk|laptop|coffee|keyboard|chair)\b/.test(haystack)) return 'desk';
   return 'plain';
 }
 
