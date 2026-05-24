@@ -343,10 +343,10 @@ function sanitizeExpression(input: unknown, speaker: string, pose?: string, robo
   if ((COMIC_EXPRESSIONS as string[]).includes(raw)) return raw as ComicExpression;
 
   const hint = `${pose || ''} ${robotThought || ''} ${dialogue || ''}`.toLowerCase();
-  if (/\bpanic|fail|outage|sev|fire|rollback|broken\b/.test(hint)) return allowed.includes('panicked') ? 'panicked' : allowed[0];
-  if (/\bthink|parse|trace|debug|why|how\b/.test(hint)) return allowed.includes('thinking') ? 'thinking' : allowed[0];
-  if (/\bconfus|uncertain|maybe|what\b/.test(hint)) return allowed.includes('confused') ? 'confused' : allowed[0];
-  if (/\bsmug|yes|success|autonomous\b/.test(hint)) return allowed.includes('smug') ? 'smug' : allowed[0];
+  if (/\b(?:panic|fail|outage|sev|fire|rollback|broken)\b/.test(hint)) return allowed.includes('panicked') ? 'panicked' : allowed[0];
+  if (/\b(?:think|parse|trace|debug|why|how)\b/.test(hint)) return allowed.includes('thinking') ? 'thinking' : allowed[0];
+  if (/\b(?:confus|uncertain|maybe|what)\b/.test(hint)) return allowed.includes('confused') ? 'confused' : allowed[0];
+  if (/\b(?:smug|yes|success|autonomous)\b/.test(hint)) return allowed.includes('smug') ? 'smug' : allowed[0];
   if (speaker === 'simon') return 'deadpan';
   if (speaker === 'boss') return 'smug';
   if (speaker === 'robot') return 'thinking';
