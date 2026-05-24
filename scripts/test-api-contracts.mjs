@@ -81,9 +81,11 @@ class MockDB {
       return { total: this.comics.length };
     }
 
-    if (sql.includes('SELECT day FROM comics WHERE day = ?')) {
+    if (sql.includes('SELECT day, model_a, model_b FROM comics WHERE day = ?')) {
       const comic = this.comics.find((item) => item.day === params[0]);
-      return comic ? { day: comic.day } : null;
+      return comic
+        ? { day: comic.day, model_a: comic.model_a, model_b: comic.model_b }
+        : null;
     }
 
     if (sql.includes('SELECT day, r2_key_a, r2_key_b FROM comics WHERE day = ?')) {
