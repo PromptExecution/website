@@ -281,12 +281,12 @@ function normalizeSpeaker(input: unknown, cast: CastCharacter[]): string {
   if (allowed.has(value)) return value;
   if (['human', 'developer', 'customer', 'founder'].includes(value)) return 'user';
   if (['assistant', 'llm', 'bot'].includes(value)) return 'robot';
-  if (['manager', 'executive'].includes(value)) return 'boss';
-  if (['admin', 'sysadmin', 'operator'].includes(value)) return 'simon';
-  if (['crab'].includes(value)) return 'ferris';
-  if (['linux', 'penguin'].includes(value)) return 'tux';
-  if (['snake', 'python_snake', 'py'].includes(value)) return 'python';
-  if (['kubernetes', 'k8s', 'captain', 'kube'].includes(value)) return 'kube_captain';
+  if (['manager', 'executive'].includes(value)) return allowed.has('boss') ? 'boss' : 'user';
+  if (['admin', 'sysadmin', 'operator'].includes(value)) return allowed.has('simon') ? 'simon' : 'user';
+  if (['crab'].includes(value)) return allowed.has('ferris') ? 'ferris' : 'user';
+  if (['linux', 'penguin'].includes(value)) return allowed.has('tux') ? 'tux' : 'user';
+  if (['snake', 'python_snake', 'py'].includes(value)) return allowed.has('python') ? 'python' : 'user';
+  if (['kubernetes', 'k8s', 'captain', 'kube'].includes(value)) return allowed.has('kube_captain') ? 'kube_captain' : 'user';
   return 'user';
 }
 
