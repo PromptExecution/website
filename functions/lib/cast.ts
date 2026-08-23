@@ -7,6 +7,9 @@ export interface CastCharacter {
   description: string;
   voice: string;
   visual_traits: string[];
+  behaviors?: string[];
+  idea_space?: string[];
+  drawable_features?: string[];
   sample_image: string;
 }
 

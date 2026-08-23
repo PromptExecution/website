@@ -25,7 +25,7 @@ export async function onRequestPost(context: any) {
     }
 
     const comic = await env.DB.prepare(
-      'SELECT day FROM comics WHERE day = ?'
+      'SELECT day, model_a, model_b FROM comics WHERE day = ?'
     ).bind(body.day).first();
 
     if (!comic) {
@@ -63,6 +63,10 @@ export async function onRequestPost(context: any) {
 
     return Response.json({
       success: true,
+      selected: {
+        variant: body.variant,
+        model: body.variant === 'a' ? comic.model_a : comic.model_b
+      },
       votes: { a: votesA, b: votesB }
     });
 

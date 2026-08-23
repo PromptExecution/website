@@ -41,6 +41,22 @@ export function generateSvgDescription(script: ComicScript): string {
       lines.push(`  Pose: ${panel.pose}`);
     }
 
+    if (panel.scene) {
+      lines.push(`  Scene: ${panel.scene}`);
+    }
+
+    if (panel.beat) {
+      lines.push(`  Story beat: ${panel.beat}`);
+    }
+
+    if (panel.visualFocus) {
+      lines.push(`  Visual focus: ${panel.visualFocus}`);
+    }
+
+    if (panel.expression) {
+      lines.push(`  Expression: ${panel.expression}`);
+    }
+
     return lines.join('\n');
   });
 
@@ -48,7 +64,7 @@ export function generateSvgDescription(script: ComicScript): string {
 Comic: "${script.title}"
 Day: ${script.day}
 Panel Layout: ${panelCount}-panel grid
-Style: Retro technical webcomic, dry humor, ASCII-art influenced
+Style: xkcd-like black-and-white technical comic, sparse stick figures, expressive diagrams, dry humor
 
 ${panelDescriptions.join('\n\n')}
   `.trim();
@@ -69,11 +85,13 @@ Retro technical webcomic style image for:
 ${svgDescription}
 
 Style Guide:
-- Retro ASCII-art inspired comic panels
-- Technical/minimalist aesthetic
+- xkcd-inspired black-and-white line art, hand-drawn but readable
+- Rich technical props: whiteboards, terminals, dashboards, network arrows, incident timers, tickets
+- Each panel should have a distinct visible scene setup and one concrete prop
 - Clear character silhouettes
+- Visible emotive faces: eyes, brows, mouths, sweat marks, deadpan eyelids as appropriate
 - Readable speech bubbles
-- Dark background, bright text
+- White background, black ink, restrained gray shading only
 - 1024x768 resolution optimized for web
 ${variantStyle ? `- Variant: ${variantStyle}` : ''}
   `.trim();
@@ -104,8 +122,8 @@ export function generateVariantPrompts(script: ComicScript): {
 } {
   const svgDescription = generateSvgDescription(script);
 
-  const promptA = generateImagePrompt(svgDescription, 'High contrast, bold lines');
-  const promptB = generateImagePrompt(svgDescription, 'Soft colors, detailed');
+  const promptA = generateImagePrompt(svgDescription, 'clean xkcd line economy, precise diagrams, high contrast');
+  const promptB = generateImagePrompt(svgDescription, 'richer panel staging, more props, still sparse black-and-white');
 
   return { promptA, promptB };
 }

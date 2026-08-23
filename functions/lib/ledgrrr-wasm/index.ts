@@ -16,7 +16,7 @@ import init, {
   workflow_to_mermaid,
   workflow_to_rhai,
   workflow_to_rust_enum,
-} from "./ledger_workflow_wasm";
+} from "./ledger_workflow_wasm.js";
 
 // Re-export the wasm module initialization
 export { init };

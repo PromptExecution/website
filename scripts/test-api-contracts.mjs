@@ -81,9 +81,11 @@ class MockDB {
       return { total: this.comics.length };
     }
 
-    if (sql.includes('SELECT day FROM comics WHERE day = ?')) {
+    if (sql.includes('SELECT day, model_a, model_b FROM comics WHERE day = ?')) {
       const comic = this.comics.find((item) => item.day === params[0]);
-      return comic ? { day: comic.day } : null;
+      return comic
+        ? { day: comic.day, model_a: comic.model_a, model_b: comic.model_b }
+        : null;
     }
 
     if (sql.includes('SELECT day, r2_key_a, r2_key_b FROM comics WHERE day = ?')) {
@@ -303,6 +305,7 @@ async function main() {
     assert.equal(response.status, 200);
     let payload = await readJson(response);
     assert.deepEqual(payload.votes, { a: 1, b: 0 });
+    assert.deepEqual(payload.selected, { variant: 'a', model: '@cf/model-a' });
 
     const response2 = await voteApi.onRequestPost({
       env,
@@ -315,6 +318,7 @@ async function main() {
     assert.equal(response2.status, 200);
     payload = await readJson(response2);
     assert.deepEqual(payload.votes, { a: 0, b: 1 });
+    assert.deepEqual(payload.selected, { variant: 'b', model: '@cf/model-b' });
   }
 
   {
@@ -403,6 +407,13 @@ async function main() {
     assert.ok(castIds.includes('user'));
     assert.ok(castIds.includes('robot'));
     assert.ok(plan.panel_count >= 3 && plan.panel_count <= 4);
+    assert.ok(plan.scenario_setup?.id);
+    assert.ok(plan.improv_menu?.characters?.includes('user'));
+    assert.ok(plan.improv_menu?.cameoChoices?.includes('ferris'));
+    assert.ok(plan.prompt_a.includes('Scenario setup:'));
+    assert.ok(plan.prompt_b.includes('Required recurring visual motif or prop:'));
+    assert.ok(plan.prompt_b.includes('Both model variants receive this same limited improv menu.'));
+    assert.ok(plan.workflow_log.some((entry) => entry.step === 'sample-structure'));
   }
 
   console.log('API and workflow contract checks passed');
