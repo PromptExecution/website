@@ -103,6 +103,9 @@ export async function onRequestPost(context: any) {
       character_count: result.character_count,
       topic_candidates: result.topic_candidates,
       selected_topic: result.selected_topic,
+      brief: result.brief,
+      selected_premises: result.selected_premises,
+      script_evaluations: result.script_evaluations,
       cast: result.cast,
       models: {
         a: result.model_a,

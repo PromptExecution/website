@@ -90,6 +90,12 @@ export function renderComicToSVG(script: ComicScript): string {
         font-size: 11px;
         fill: #2f2f2f;
       }
+      .screen-text {
+        font-family: 'SFMono-Regular', 'Courier New', monospace;
+        font-size: 6px;
+        font-weight: 600;
+        fill: #292929;
+      }
     </style>
     ${buildFilters(renderSeed, panelCount)}
   </defs>
@@ -118,7 +124,7 @@ function renderPanel(
   script: ComicScript,
   renderSeed: number,
 ): string {
-  const panelSeed = hashString(`${renderSeed}|panel|${panel.panelNumber}|${panel.speaker}|${panel.dialogue || ''}|${panel.robotThought || ''}|${panel.action || ''}`);
+  const panelSeed = hashString(`${renderSeed}|panel|${panel.panelNumber}|${panel.speaker}|${panel.dialogue || ''}|${panel.robotThought || ''}|${panel.action || ''}|${panel.screenText || ''}`);
   const borderRng = createRng(hashString(`border|${panelSeed}`));
   const border = renderClosedSketch(
     roughRectanglePoints(x, y, width, height, borderRng, SKETCH_CONTROLS, 2.8),
@@ -836,7 +842,7 @@ function drawThoughtBubble(x: number, y: number, text: string, maxWidth: number,
 
 function drawSceneBackdrop(scene: ComicScene, x: number, y: number, width: number, height: number, panel: ComicPanel, seed: number): string {
   if (scene === 'terminal' || scene === 'desk') {
-    return drawTerminalScene(x + 30, y + height - 106, width - 60, seed, panel.visualFocus);
+    return drawTerminalScene(x + 30, y + height - 106, width - 60, seed, panel.screenText || panel.visualFocus);
   }
 
   if (scene === 'whiteboard') {
@@ -858,7 +864,7 @@ function drawSceneBackdrop(scene: ComicScene, x: number, y: number, width: numbe
   return drawPlainScene(x, y, width, height, seed, panel.beat);
 }
 
-function drawTerminalScene(x: number, y: number, width: number, seed: number, focus = 'logs'): string {
+function drawTerminalScene(x: number, y: number, width: number, seed: number, screenText?: string): string {
   const rng = createRng(hashString(`terminal|${seed}|${width}`));
   const deskLeft = { x, y: y + 26 + jitter(rng, 0.9) };
   const deskRight = { x: x + width, y: y + 23 + jitter(rng, 1.2) };
@@ -896,6 +902,12 @@ function drawTerminalScene(x: number, y: number, width: number, seed: number, fo
     rng,
     { stroke: '#6d6d6d', width: 1.1, opacity: 0.56, doubleStroke: false },
   );
+  if (screenText) {
+    const screenLines = wrapText(screenText, 16).slice(0, 2);
+    content += screenLines.map((line, index) => (
+      `<text x="${fmt(monitorX - 2)}" y="${fmt(monitorY - 5 + index * 8)}" text-anchor="middle" class="screen-text">${escapeXml(line)}</text>`
+    )).join('');
+  }
   content += renderClosedSketch(
     roughPolygonPoints([
       { x: x + width * 0.34 - 22, y: y + 8 },
@@ -935,7 +947,6 @@ function drawTerminalScene(x: number, y: number, width: number, seed: number, fo
     rng,
     { stroke: '#747474', width: 0.85, opacity: 0.5, doubleStroke: false },
   );
-  content += renderTinyLabel(monitorX, monitorY + 8, focus, 'middle');
   content += `</g>`;
   return content;
 }
@@ -1092,6 +1103,8 @@ function detectScene(panel: ComicPanel): ComicScene {
   if (['terminal', 'whiteboard', 'incident_room', 'meeting', 'network', 'desk', 'plain'].includes(explicit)) {
     return explicit as ComicScene;
   }
+
+  if (panel.screenText) return 'terminal';
 
   const haystack = `${panel.action || ''} ${panel.dialogue || ''} ${panel.robotThought || ''} ${panel.visualFocus || ''}`.toLowerCase();
   if (/\b(?:whiteboard|diagram|arrow|architecture|schema|chart)\b/.test(haystack)) return 'whiteboard';

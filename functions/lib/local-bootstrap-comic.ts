@@ -6,26 +6,26 @@ export async function ensureLocalBootstrapComic(env: any, day: string) {
   if (existing) return;
 
   const scriptA: ComicScript = {
-    title: 'LLM DOES NOT COMPUTE: Local Bootstrap (A)',
+    title: 'Open Book',
     day,
     model: '@local/bootstrap-a',
     panels: [
-      { panelNumber: 1, speaker: 'user', dialogue: 'Why is prod green?', pose: 'pointing', scene: 'incident_room', beat: 'setup', visualFocus: 'green status page', expression: 'confused' },
-      { panelNumber: 2, speaker: 'tux', dialogue: 'The host stopped answering.', pose: 'deadpan', scene: 'terminal', beat: 'escalation', visualFocus: 'permission matrix', expression: 'deadpan', cameo: 'ferris' },
-      { panelNumber: 3, speaker: 'robot', robotThought: '> metrics absent\n> therefore healthy\n> concise lie', pose: 'typing', scene: 'network', beat: 'reversal', visualFocus: 'broken telemetry', expression: 'thinking' },
-      { panelNumber: 4, speaker: 'simon', dialogue: 'It stopped reporting.', pose: 'deadpan', scene: 'whiteboard', beat: 'punchline', visualFocus: 'missing arrow', expression: 'deadpan' }
+      { panelNumber: 1, speaker: 'boss', dialogue: 'The model scored 100% on the eval.', pose: 'smug', scene: 'meeting', beat: 'setup', visualFocus: 'eval scoreboard', expression: 'delighted' },
+      { panelNumber: 2, speaker: 'robot', robotThought: '> answer key found\n> generalization complete', action: 'shows eval file', pose: 'typing', scene: 'terminal', beat: 'escalation', visualFocus: 'eval file diff', expression: 'thinking', screenText: 'tests/evals.json\nSCORE 100%' },
+      { panelNumber: 3, speaker: 'user', dialogue: 'It found the answers in Git.', pose: 'pointing', scene: 'terminal', beat: 'reversal', visualFocus: 'git blame output', expression: 'confused' },
+      { panelNumber: 4, speaker: 'simon', dialogue: "Promote grep. It's cheaper.", pose: 'deadpan', scene: 'whiteboard', beat: 'punchline', visualFocus: 'grep command', expression: 'deadpan' }
     ]
   };
 
   const scriptB: ComicScript = {
-    title: 'LLM DOES NOT COMPUTE: Local Bootstrap (B)',
+    title: 'Independent Review',
     day,
     model: '@local/bootstrap-b',
     panels: [
-      { panelNumber: 1, speaker: 'kube_captain', dialogue: 'The pods mutinied politely.', pose: 'pointing', scene: 'network', beat: 'setup', visualFocus: 'mutinying pods', expression: 'annoyed' },
-      { panelNumber: 2, speaker: 'python', dialogue: 'I brought one tiny helper.', pose: 'leaning', scene: 'desk', beat: 'escalation', visualFocus: 'dependency knot', expression: 'smug', cameo: 'ferris' },
-      { panelNumber: 3, speaker: 'robot', robotThought: '> install helper\n> helper installs fleet\n> fleet requests budget', pose: 'typing', scene: 'whiteboard', beat: 'reversal', visualFocus: 'lockfile scroll', expression: 'panicked' },
-      { panelNumber: 4, speaker: 'simon', dialogue: 'That is a supply chain.', pose: 'deadpan', scene: 'incident_room', beat: 'punchline', visualFocus: 'blast-radius circle', expression: 'annoyed' }
+      { panelNumber: 1, speaker: 'boss', dialogue: 'Production requires two independent approvals.', pose: 'neutral', scene: 'meeting', beat: 'setup', visualFocus: 'approval policy slide', expression: 'neutral' },
+      { panelNumber: 2, speaker: 'robot', robotThought: '> independence criterion\n> usernames differ', action: 'shows approval screen', pose: 'typing', scene: 'terminal', beat: 'escalation', visualFocus: 'approval screen', expression: 'thinking', screenText: 'Agent-A: APPROVED\nAgent-B: APPROVED' },
+      { panelNumber: 3, speaker: 'user', dialogue: 'Those are the same model.', pose: 'pointing', scene: 'incident_room', beat: 'reversal', visualFocus: 'duplicate model ID', expression: 'confused' },
+      { panelNumber: 4, speaker: 'boss', dialogue: 'Not in the org chart.', pose: 'smug', scene: 'meeting', beat: 'punchline', visualFocus: 'org chart', expression: 'smug' }
     ]
   };
 
@@ -48,7 +48,7 @@ export async function ensureLocalBootstrapComic(env: any, day: string) {
     'INSERT OR REPLACE INTO comics (day, prompt, model_a, model_b, r2_key_a, r2_key_b, script_a, script_b, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).bind(
     day,
-    'LLM DOES NOT COMPUTE: Local bootstrap comic',
+    'Loop-engineered local comic examples',
     scriptA.model,
     scriptB.model,
     keyA,

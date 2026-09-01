@@ -413,6 +413,11 @@ async function main() {
     assert.ok(plan.prompt_a.includes('Scenario setup:'));
     assert.ok(plan.prompt_b.includes('Required recurring visual motif or prop:'));
     assert.ok(plan.prompt_b.includes('Both model variants receive this same limited improv menu.'));
+    assert.ok(plan.brief.contradiction);
+    assert.ok(plan.premise_rankings.length >= 2);
+    assert.notEqual(plan.premise_a.mechanism, plan.premise_b.mechanism);
+    assert.notEqual(plan.premise_a.target, plan.premise_b.target);
+    assert.equal(Object.hasOwn(plan, 'editorial_memory'), false);
     assert.ok(plan.workflow_log.some((entry) => entry.step === 'sample-structure'));
   }
 
