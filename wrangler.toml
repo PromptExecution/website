@@ -47,5 +47,5 @@ SCRIPT_MODEL_LINEUP = """
 @cf/google/gemma-4-26b-a4b-it
 """
 TOPIC_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
-AUTO_GENERATE_ON_READ = "1"
-ALLOW_LOCAL_BOOTSTRAP = "1"
+AUTO_GENERATE_ON_READ = "0"
+ALLOW_LOCAL_BOOTSTRAP = "0"

@@ -33,6 +33,13 @@ dev-ui:
 build:
   @bun run build
 
+test:
+  @bun run test:comic-loops
+  @bun run test:contracts
+
+test-comic-loops:
+  @bun run test:comic-loops
+
 test-workflow-dry:
   @curl -X POST \
     -H "Authorization: Bearer local-secret" \
