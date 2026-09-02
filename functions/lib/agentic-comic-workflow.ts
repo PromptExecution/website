@@ -297,6 +297,31 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     modelA,
   );
 
+  // decideScriptLoopAction (comic-loop.ts) only ever reaches 'reject' when
+  // evaluation.passed is false after the bounded rewrite+invert attempts are
+  // exhausted - so evaluation.passed here is exactly "did this variant clear
+  // the editorial gate, not just run out of retries". Nothing below this
+  // point (SVG render, R2 write, D1 insert) should ever run for a rejected
+  // variant - every caller (today.ts, test-generate.ts, the cron scheduled()
+  // handler) already has error handling that falls back or surfaces this
+  // clearly rather than silently shipping unreviewed content.
+  const rejectedVariants = [
+    !variantA.evaluation.passed ? 'A' : null,
+    !variantB.evaluation.passed ? 'B' : null,
+  ].filter((v): v is string => v !== null);
+  if (rejectedVariants.length > 0) {
+    workflowLog.push(makeStep(
+      'editorial-gate',
+      'error',
+      `Variant(s) ${rejectedVariants.join(', ')} failed editorial review after rewrite+invert attempts (score ${variantA.evaluation.total}/30, ${variantB.evaluation.total}/30) - refusing to publish.`,
+    ));
+    throw new Error(
+      `Editorial gate rejected variant(s) ${rejectedVariants.join(', ')} for ${plan.day} - not publishing. ` +
+      `A: ${variantA.evaluation.total}/30 (passed=${variantA.evaluation.passed}), ` +
+      `B: ${variantB.evaluation.total}/30 (passed=${variantB.evaluation.passed}).`
+    );
+  }
+
   const imageKeyA = `comics/${plan.day}/a.svg`;
   const imageKeyB = `comics/${plan.day}/b.svg`;
   const artifactPrefix = `artifacts/${plan.day}/${plan.run_id}`;
