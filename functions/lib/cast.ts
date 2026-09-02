@@ -13,7 +13,10 @@ export interface CastCharacter {
   sample_image: string;
 }
 
-export const CAST: CastCharacter[] = castData as CastCharacter[];
+export const CAST: CastCharacter[] = castData.map((character) => ({
+  ...character,
+  visual_traits: [...character.visual_traits],
+}));
 
 export function getCharacterById(id: string): CastCharacter | undefined {
   return CAST.find((character) => character.id === id);

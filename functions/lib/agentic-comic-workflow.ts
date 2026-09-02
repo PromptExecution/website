@@ -1,7 +1,21 @@
 import { CAST, getCharacterById, pickCharactersExcluding, type CastCharacter } from './cast.ts';
-import { generateComicScript, type ComicImprovMenu, type ComicScript } from './comic-generator.ts';
+import { generateComicScript, rewriteComicScript, type ComicImprovMenu, type ComicScript, type GenerateComicScriptOptions } from './comic-generator.ts';
+import {
+  decideScriptLoopAction,
+  evaluateComicScript,
+  generatePremiseRoom,
+  rankPremises,
+  selectDistinctPremises,
+  chooseTrizInversion,
+  type ComicBrief,
+  type EditorialMemory,
+  type PremiseCandidate,
+  type PremiseScore,
+  type ScriptEvaluation,
+} from './comic-loop.ts';
 import { renderComicToSVG } from './svg-renderer.ts';
-import { invokeWorkflow, type AuditEntry } from './ledgrrr-mcp-client.ts';
+import { invokeWorkflow } from './ledgrrr-mcp-client.ts';
+import type { AuditEntry } from './ledgrrr-types.ts';
 
 const DEFAULT_SCRIPT_MODEL_A = '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b';
 const DEFAULT_SCRIPT_MODEL_B = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
@@ -190,6 +204,10 @@ export interface ComicWorkflowResult {
   selected_topic: string;
   scenario_setup: ScenarioSetup;
   improv_menu: ComicImprovMenu;
+  brief: ComicBrief;
+  premise_candidates: PremiseScore[];
+  selected_premises: { a: PremiseCandidate; b: PremiseCandidate };
+  script_evaluations: { a: ScriptEvaluation; b: ScriptEvaluation };
   model_a: string;
   model_b: string;
   prompt_a: string;
@@ -203,9 +221,12 @@ export interface ComicWorkflowResult {
     improv_menu: string;
     prompt_a: string;
     prompt_b: string;
+    brief: string;
+    premises: string;
+    decision: string;
   };
-  script_a: Record<string, unknown>;
-  script_b: Record<string, unknown>;
+  script_a: ComicScript;
+  script_b: ComicScript;
   imageGenerationStatus?: 'pending' | 'success' | 'failed' | 'error';
   audit_trail?: AuditEntry;
   workflow_log: WorkflowStepLog[];
@@ -222,6 +243,11 @@ interface ComicPlan {
   selected_topic: string;
   scenario_setup: ScenarioSetup;
   improv_menu: ComicImprovMenu;
+  brief: ComicBrief;
+  premise_rankings: PremiseScore[];
+  premise_a: PremiseCandidate;
+  premise_b: PremiseCandidate;
+  editorial_memory: EditorialMemory;
   prompt_a: string;
   prompt_b: string;
 }
@@ -237,8 +263,9 @@ interface ScenarioSetup {
 export async function previewAgenticPromptPlan(env: any, options: { day: string; force_topic?: string; trigger: 'cron' | 'manual'; }) {
   const workflowLog: WorkflowStepLog[] = [];
   const plan = await buildComicPlan(env, options, workflowLog);
+  const { editorial_memory: _editorialMemory, ...publicPlan } = plan;
   return {
-    ...plan,
+    ...publicPlan,
     workflow_log: workflowLog
   };
 }
@@ -249,8 +276,51 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
   const [modelA, modelB] = pickScriptModels(env, plan.run_id);
   workflowLog.push(makeStep('select-script-models', 'ok', `Selected variant models: A=${modelA}, B=${modelB}.`));
 
-  const variantA = await generateScriptVariant(env, modelA, plan, workflowLog, 'variant-a', 'prioritize the cleanest joke structure and readable dialogue.', modelB);
-  const variantB = await generateScriptVariant(env, modelB, plan, workflowLog, 'variant-b', 'prioritize sharper escalation and a meaner final punchline.', modelA);
+  const variantA = await generateScriptVariant(
+    env,
+    modelA,
+    plan,
+    plan.premise_a,
+    workflowLog,
+    'variant-a',
+    'Preserve this premise mechanism. Optimize compression, exact terminology, and a clean change in reader interpretation.',
+    modelB,
+  );
+  const variantB = await generateScriptVariant(
+    env,
+    modelB,
+    plan,
+    plan.premise_b,
+    workflowLog,
+    'variant-b',
+    'Preserve this distinct premise mechanism. Optimize the visible consequence and final reframe without explaining either.',
+    modelA,
+  );
+
+  // decideScriptLoopAction (comic-loop.ts) only ever reaches 'reject' when
+  // evaluation.passed is false after the bounded rewrite+invert attempts are
+  // exhausted - so evaluation.passed here is exactly "did this variant clear
+  // the editorial gate, not just run out of retries". Nothing below this
+  // point (SVG render, R2 write, D1 insert) should ever run for a rejected
+  // variant - every caller (today.ts, test-generate.ts, the cron scheduled()
+  // handler) already has error handling that falls back or surfaces this
+  // clearly rather than silently shipping unreviewed content.
+  const rejectedVariants = [
+    !variantA.evaluation.passed ? 'A' : null,
+    !variantB.evaluation.passed ? 'B' : null,
+  ].filter((v): v is string => v !== null);
+  if (rejectedVariants.length > 0) {
+    workflowLog.push(makeStep(
+      'editorial-gate',
+      'error',
+      `Variant(s) ${rejectedVariants.join(', ')} failed editorial review after rewrite+invert attempts (score ${variantA.evaluation.total}/30, ${variantB.evaluation.total}/30) - refusing to publish.`,
+    ));
+    throw new Error(
+      `Editorial gate rejected variant(s) ${rejectedVariants.join(', ')} for ${plan.day} - not publishing. ` +
+      `A: ${variantA.evaluation.total}/30 (passed=${variantA.evaluation.passed}), ` +
+      `B: ${variantB.evaluation.total}/30 (passed=${variantB.evaluation.passed}).`
+    );
+  }
 
   const imageKeyA = `comics/${plan.day}/a.svg`;
   const imageKeyB = `comics/${plan.day}/b.svg`;
@@ -267,6 +337,16 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     env.COMICS_BUCKET.put(`${artifactPrefix}/improv-menu.json`, JSON.stringify(plan.improv_menu, null, 2), { httpMetadata: { contentType: 'application/json' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/prompt-a.txt`, plan.prompt_a, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/prompt-b.txt`, plan.prompt_b, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/brief.json`, JSON.stringify(plan.brief, null, 2), { httpMetadata: { contentType: 'application/json' } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/premises.json`, JSON.stringify(plan.premise_rankings, null, 2), { httpMetadata: { contentType: 'application/json' } }),
+    env.COMICS_BUCKET.put(`${artifactPrefix}/decision.json`, JSON.stringify({
+      premise_a: plan.premise_a,
+      premise_b: plan.premise_b,
+      evaluation_a: variantA.evaluation,
+      evaluation_b: variantB.evaluation,
+      rewrite_attempts_a: variantA.rewriteAttempts,
+      rewrite_attempts_b: variantB.rewriteAttempts,
+    }, null, 2), { httpMetadata: { contentType: 'application/json' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/script-a.json`, JSON.stringify(variantA.script, null, 2), { httpMetadata: { contentType: 'application/json' } }),
     env.COMICS_BUCKET.put(`${artifactPrefix}/script-b.json`, JSON.stringify(variantB.script, null, 2), { httpMetadata: { contentType: 'application/json' } }),
   ]);
@@ -295,7 +375,10 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
       script_a: variantA.script,
       script_b: variantB.script,
       topic: plan.selected_topic,
-      cast: plan.cast
+      cast: plan.cast,
+      brief: plan.brief,
+      selected_premises: [plan.premise_a, plan.premise_b],
+      script_evaluations: [variantA.evaluation, variantB.evaluation],
     });
 
     if (auditResult.success) {
@@ -366,6 +449,11 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
     topic_candidates: plan.topic_candidates,
     selected_topic: plan.selected_topic,
     scenario_setup: plan.scenario_setup,
+    improv_menu: plan.improv_menu,
+    brief: plan.brief,
+    premise_candidates: plan.premise_rankings,
+    selected_premises: { a: plan.premise_a, b: plan.premise_b },
+    script_evaluations: { a: variantA.evaluation, b: variantB.evaluation },
     model_a: variantA.script.model,
     model_b: variantB.script.model,
     prompt_a: plan.prompt_a,
@@ -378,7 +466,10 @@ export async function runAgenticComicWorkflow(env: any, options: { day: string; 
       topics: `${artifactPrefix}/topics.json`,
       improv_menu: `${artifactPrefix}/improv-menu.json`,
       prompt_a: `${artifactPrefix}/prompt-a.txt`,
-      prompt_b: `${artifactPrefix}/prompt-b.txt`
+      prompt_b: `${artifactPrefix}/prompt-b.txt`,
+      brief: `${artifactPrefix}/brief.json`,
+      premises: `${artifactPrefix}/premises.json`,
+      decision: `${artifactPrefix}/decision.json`,
     },
     script_a: variantA.script,
     script_b: variantB.script,
@@ -414,17 +505,47 @@ async function buildComicPlan(
   const scenarioSetup = buildScenarioSetup(random, selectedTopic, chosenCast);
   const improvMenu = buildImprovMenu(random, selectedTopic, chosenCast, scenarioSetup);
   const title = makeComicTitle(selectedTopic);
+  const editorialMemory = await loadEditorialMemory(env, workflowLog);
+  const premiseRoom = await generatePremiseRoom({
+    ai: env.AI,
+    model: env.PREMISE_MODEL || env.TOPIC_MODEL || env.SCRIPT_MODEL_A || DEFAULT_TOPIC_MODEL,
+    topic: selectedTopic,
+    panelCount,
+    castSummary: chosenCast.map((character) => `${character.name}: ${character.voice}`).join(' | '),
+    memory: editorialMemory,
+  });
+  const premiseRankings = rankPremises(premiseRoom.premises, editorialMemory);
+  const selectedPremises = selectDistinctPremises(premiseRankings, 2);
 
-  const promptBase = buildStandardPrompt({
+  if (selectedPremises.length < 2) {
+    throw new Error('Premise loop did not produce two viable candidates.');
+  }
+  const premiseA = selectedPremises[0].candidate;
+  const premiseB = selectedPremises[1].candidate;
+  workflowLog.push(makeStep(
+    'premise-loop',
+    'ok',
+    `Ranked ${premiseRankings.length} premises; selected ${premiseA.mechanism}/${premiseA.target} and ${premiseB.mechanism}/${premiseB.target}.`,
+  ));
+
+  const promptA = buildStandardPrompt({
     panelCount,
     cast: chosenCast,
     topic: selectedTopic,
     scenario: scenarioSetup,
     improvMenu,
+    brief: premiseRoom.brief,
+    premise: premiseA,
   });
-
-  const promptA = `${promptBase}\nVariant directive: prioritize crisp setup, exact terminology, and readable punchlines.`;
-  const promptB = `${promptBase}\nVariant directive: prioritize sharper escalation, dry cruelty, and a stronger final reversal.`;
+  const promptB = buildStandardPrompt({
+    panelCount,
+    cast: chosenCast,
+    topic: selectedTopic,
+    scenario: scenarioSetup,
+    improvMenu,
+    brief: premiseRoom.brief,
+    premise: premiseB,
+  });
 
   workflowLog.push(makeStep('build-prompts', 'ok', 'Built standard image generation prompts for both variants.'));
 
@@ -439,6 +560,11 @@ async function buildComicPlan(
     selected_topic: selectedTopic,
     scenario_setup: scenarioSetup,
     improv_menu: improvMenu,
+    brief: premiseRoom.brief,
+    premise_rankings: premiseRankings,
+    premise_a: premiseA,
+    premise_b: premiseB,
+    editorial_memory: editorialMemory,
     prompt_a: promptA,
     prompt_b: promptB
   };
@@ -661,10 +787,54 @@ function normalizeModelName(input: unknown): string | undefined {
   return model || undefined;
 }
 
+async function loadEditorialMemory(env: any, workflowLog: WorkflowStepLog[]): Promise<EditorialMemory> {
+  const empty: EditorialMemory = { recentTitles: [], recentDialogue: [] };
+  if (!env.DB) {
+    workflowLog.push(makeStep('editorial-memory', 'ok', 'No database binding; started with empty editorial memory.'));
+    return empty;
+  }
+
+  try {
+    const result = await env.DB.prepare(
+      'SELECT prompt, script_a, script_b FROM comics ORDER BY day DESC LIMIT 60'
+    ).all();
+    const rows = Array.isArray(result?.results) ? result.results : [];
+    const recentTitles = rows.map((row: any) => String(row.prompt || '').trim()).filter(Boolean);
+    const recentDialogue: string[] = [];
+
+    for (const row of rows) {
+      for (const rawScript of [row.script_a, row.script_b]) {
+        try {
+          const script = typeof rawScript === 'string' ? JSON.parse(rawScript) : rawScript;
+          if (!Array.isArray(script?.panels)) continue;
+          for (const panel of script.panels) {
+            if (typeof panel?.dialogue === 'string' && panel.dialogue.trim()) {
+              recentDialogue.push(panel.dialogue.trim());
+            }
+          }
+        } catch {
+          // A malformed historical script should not block today's editorial loop.
+        }
+      }
+    }
+
+    workflowLog.push(makeStep(
+      'editorial-memory',
+      'ok',
+      `Loaded ${recentTitles.length} titles and ${recentDialogue.length} dialogue lines for novelty checks.`,
+    ));
+    return { recentTitles, recentDialogue };
+  } catch (err: any) {
+    workflowLog.push(makeStep('editorial-memory', 'error', `Could not load editorial memory: ${err.message || String(err)}`));
+    return empty;
+  }
+}
+
 async function generateScriptVariant(
   env: any,
   model: string,
   plan: ComicPlan,
+  premise: PremiseCandidate,
   workflowLog: WorkflowStepLog[],
   stepName: string,
   variantDirective: string,
@@ -675,7 +845,7 @@ async function generateScriptVariant(
   }
 
   try {
-    const script = await generateComicScript({
+    const generationOptions: GenerateComicScriptOptions = {
       ai: env.AI,
       model,
       fallbackModel,
@@ -686,16 +856,69 @@ async function generateScriptVariant(
       cast: plan.cast,
       variantDirective,
       improvMenu: plan.improv_menu,
+      brief: plan.brief,
+      premise,
+    };
+    let script = await generateComicScript(generationOptions);
+    let evaluation = evaluateComicScript(script, {
+      technicalAnchor: premise.technicalAnchor,
+      recentDialogue: plan.editorial_memory.recentDialogue,
     });
-    workflowLog.push(makeStep(stepName, 'ok', `Generated scripted SVG comic with ${script.model}.`));
-    return { script };
+    let rewriteAttempts = 0;
+
+    while (true) {
+      const action = decideScriptLoopAction(evaluation, rewriteAttempts);
+      if (action === 'accept' || action === 'reject') break;
+
+      const inversion = action === 'invert' ? chooseTrizInversion(evaluation) : undefined;
+      try {
+        const candidate = await rewriteComicScript(generationOptions, script, evaluation, inversion);
+        const candidateEvaluation = evaluateComicScript(candidate, {
+          technicalAnchor: premise.technicalAnchor,
+          recentDialogue: plan.editorial_memory.recentDialogue,
+        });
+        rewriteAttempts += 1;
+
+        if (candidateEvaluation.total >= evaluation.total) {
+          script = candidate;
+          evaluation = candidateEvaluation;
+        }
+        workflowLog.push(makeStep(
+          `${stepName}-${action}`,
+          'ok',
+          `${action === 'invert' ? 'Applied TRIZ inversion' : 'Rewrote draft'}; candidate scored ${candidateEvaluation.total}/30.`,
+        ));
+      } catch (rewriteErr: any) {
+        rewriteAttempts += 1;
+        workflowLog.push(makeStep(
+          `${stepName}-${action}`,
+          'error',
+          `Editorial ${action} failed: ${rewriteErr.message || String(rewriteErr)}`,
+        ));
+      }
+    }
+
+    workflowLog.push(makeStep(
+      stepName,
+      evaluation.passed ? 'ok' : 'error',
+      `Generated scripted SVG comic with ${script.model}; editorial score ${evaluation.total}/30 after ${rewriteAttempts} rewrite attempt(s).`,
+    ));
+    return { script, evaluation, rewriteAttempts };
   } catch (err: any) {
     workflowLog.push(makeStep(stepName, 'error', `Comic script generation failed on ${model}: ${err.message || String(err)}`));
     throw err;
   }
 }
 
-function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[]; topic: string; scenario: ScenarioSetup; improvMenu: ComicImprovMenu; }): string {
+function buildStandardPrompt(input: {
+  panelCount: number;
+  cast: CastCharacter[];
+  topic: string;
+  scenario: ScenarioSetup;
+  improvMenu: ComicImprovMenu;
+  brief: ComicBrief;
+  premise: PremiseCandidate;
+}): string {
   const castLines = input.cast.map((char, idx) => (
     `${idx + 1}. ${char.name} (${char.role})` +
     `\n   Description: ${char.description}` +
@@ -727,10 +950,12 @@ function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[];
     `Cameo choices: ${input.improvMenu.cameoChoices.join(', ')}.`,
     'Entropy requirement: each panel needs a distinct visible prop or staging idea; do not solve every setup with a whiteboard, terminal, meeting, or status page.',
     'Character requirement: optional cast members must change the joke mechanics through their behaviors, not merely appear as labels.',
+    `Structured brief: ${JSON.stringify(input.brief)}`,
+    `Selected premise: ${JSON.stringify(input.premise)}`,
     'Recurring cast bible:',
-    '- The User is a plain round-head stick figure who asks vague, underspecified questions.',
-    '- The LLM Robot is a square-head stick figure with an antenna. Its internal monologue appears in a cloud thought bubble using a technical monospace style.',
-    '- Simon is a BOFH sysadmin with square glasses, a fedora, and grey goatee. He is dry, cynical, and usually lands the correction or punchline.',
+    '- The User is a plain round-head stick figure. The User may be correct, mistaken, or trapped by the process.',
+    '- The LLM Robot is a square-head stick figure with an antenna. It is a literal optimizer, not automatically the least competent character.',
+    '- Simon is a BOFH sysadmin with square glasses, a fedora, and grey goatee. He may reveal, cause, or suffer the operational consequence.',
     '- The Boss wears a tie and talks like an AI hype manager.',
     '- Ferris is a silent crab cameo or panic signal in the background.',
     '- Tux is a Linux penguin: use host/filesystem/package/kernel pragmatism and draw penguin features.',
@@ -740,12 +965,13 @@ function buildStandardPrompt(input: { panelCount: number; cast: CastCharacter[];
     castLines,
     'Scene requirements:',
     '- The strip must include both the User and the LLM Robot.',
-    '- Keep the robot internal monologue compact and monospace-friendly.',
+    '- Robot internal monologue is optional; use it only for dramatic irony.',
     '- Keep Simon deadpan if Simon is present.',
     '- Use dry systems-thinking humor about failure modes, architecture, operations, or specification gaps.',
     '- Prefer concrete nouns: deploy, cache key, rollback, runbook, timeout, queue, incident.',
     '- Prefer concrete visual nouns beyond the usual set: lockfiles, keys, clocks, levers, invoices, manifests, buckets, probes, flags, receipts, labels.',
-    '- Avoid generic "AI is weird" jokes.',
+    '- The final beat must reclassify the setup rather than confirm the previous line.',
+    '- Avoid generic "AI is weird" jokes and stock closers such as "accurate" or "technically correct".',
     '- No watermark, no sponsor copy, no unrelated text.'
   ].join('\n');
 }
@@ -805,4 +1031,20 @@ function hashToUInt32(input: string): number {
     h = Math.imul(h, 16777619);
   }
   return h >>> 0;
+}
+
+function parseJsonFromText(raw: unknown): any {
+  if (raw && typeof raw === 'object') return raw;
+  if (typeof raw !== 'string') return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    try {
+      return JSON.parse(match[0]);
+    } catch {
+      return null;
+    }
+  }
 }
