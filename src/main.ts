@@ -7,8 +7,11 @@ import App from './App.vue'
 import VueGtag from "vue-gtag-next";
 import { VueCookieNext } from 'vue-cookie-next';
 import VueNativeSock from "vue-native-websocket-vue3";
-import Terminal from 'vue-web-terminal';
+// @ts-expect-error — vue-web-terminal ships createTerminal but its .d.ts
+// references an unresolvable ~/ path; the runtime export is fine.
+import { createTerminal } from 'vue-web-terminal';
 
+import { setupStore } from "./store/pinia/store";
 import { useSocketStoreWithOut } from "./store/pinia/useSocketStore";
 
 // 🤓: https://github.com/eladcandroid/v-idle-3
@@ -19,9 +22,6 @@ const app = createApp(App);
 app.config.unwrapInjectedRef = true
 */
 
-// Set up Pinia store before mounting
-useSocketStoreWithOut(app);
-
 app.use(VueCookieNext);
 
 app.use(VueGtag, {
@@ -29,11 +29,22 @@ app.use(VueGtag, {
   isEnabled: false,
 });
 
-// Register vue-web-terminal (required for TerminalApi to work)
-app.use(Terminal);
+// Register vue-web-terminal — must use createTerminal() so initStore() runs.
+// The default export is the component itself (no install method), so
+// app.use(defaultExport) silently skips store init, causing
+// "The store must be initialized before reading" on every command.
+app.use(createTerminal());
 
+// Pinia must always be installed — useMainStore() in App.vue needs it.
+setupStore(app);
+
+// Only initialise the socket store and websocket plugin when the env var is set.
+// Without this guard, useSocketStoreWithOut() registers a Pinia store that
+// reads socket state before the plugin is installed, throwing
+// "The store must be initialized before reading" and breaking command execution.
 const terminalWebSocketUrl = import.meta.env.VITE_TERMINAL_WS_URL;
 if (terminalWebSocketUrl) {
+  useSocketStoreWithOut(app);
   app.use(VueNativeSock, terminalWebSocketUrl, {
     // 启用pinia集成 | enable pinia integration
     // store: piniaSocketStore(),

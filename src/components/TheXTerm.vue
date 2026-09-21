@@ -17,7 +17,7 @@ FILE: src/components/TheXTerm.vue
     @before-execute-command="onBeforeExecuteCommand"
     @exec-cmd="onExecCmd"
     :show-header="false"
-    :enable-example-hint="false"
+    :enable-example-hint="true"
     title="👋🏻"
     theme="dark">
   </Terminal>
