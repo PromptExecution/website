@@ -170,12 +170,20 @@ function renderPanel(
     content += drawPythonFigure(figureX, figureY + 18, panel, script.day);
   } else if (panel.speaker === 'kube_captain') {
     content += drawKubeCaptainFigure(figureX, figureY - 24, panel, script.day, pose);
+  } else if (panel.speaker === 'clippy') {
+    content += drawClippyFigure(figureX, figureY, panel, script.day);
+  } else if (panel.speaker === 'copilot') {
+    content += drawCopilotFigure(figureX, figureY + 8, panel, script.day);
   } else {
     content += drawHumanFigure(figureX, figureY - 24, panel, script.day, pose);
   }
 
   if (panel.cameo === 'ferris' && panel.speaker !== 'ferris') {
     content += drawFerrisFigure(x + width - 42, y + height - 62, { ...panel, expression: 'delighted' }, script.day);
+  }
+  if (panel.speaker === 'clippy') {
+    // Spawn a copilot minion in the background
+    content += drawCopilotFigure(x + width - 36, y + height - 52, { ...panel, expression: 'blank' }, script.day);
   }
 
   return content;
@@ -458,6 +466,178 @@ function drawKubeCaptainFigure(x: number, y: number, panel: ComicPanel, day: str
     { x: skeleton.hip.x + 20, y: skeleton.hip.y + 12 },
     { x: skeleton.hip.x - 18, y: skeleton.hip.y + 12 },
   ], rng, 1.0), rng, { fill: 'none', width: 1.35, opacity: 0.65, doubleStroke: false });
+  content += `</g>`;
+  return content;
+}
+
+function drawClippyFigure(x: number, y: number, panel: ComicPanel, day: string): string {
+  const ctx = createCharacterContext('clippy', panel, day);
+  const rng = ctx.frameRng;
+  const expression = normalizeExpression(panel.expression, 'clippy');
+  const sway = jitter(rng, 1.2);
+  const clipX = x + sway;
+  const clipY = y;
+
+  let content = `<g filter="url(#${ctx.filterId})">`;
+
+  // Paperclip body: outer U-shape (large)
+  const outerW = 28;
+  const outerH = 65;
+  content += renderOpenSketch(
+    roughLinePoints(
+      { x: clipX - outerW * 0.5, y: clipY - outerH * 0.4 },
+      { x: clipX - outerW * 0.5, y: clipY + outerH * 0.35 },
+      rng, ctx.controls, 5, 0.04,
+    ),
+    rng, { width: 3.5, stroke: '#5a7a9a', opacity: 0.95 },
+  );
+  content += renderOpenSketch(
+    roughArcPoints(clipX, clipY + outerH * 0.35, outerW * 0.5, outerH * 0.18, 0.05, Math.PI - 0.05, rng),
+    rng, { width: 3.5, stroke: '#5a7a9a', opacity: 0.95 },
+  );
+  content += renderOpenSketch(
+    roughLinePoints(
+      { x: clipX + outerW * 0.5, y: clipY + outerH * 0.35 },
+      { x: clipX + outerW * 0.5, y: clipY - outerH * 0.15 },
+      rng, ctx.controls, 5, 0.04,
+    ),
+    rng, { width: 3.5, stroke: '#5a7a9a', opacity: 0.95 },
+  );
+
+  // Inner bend (the smaller U that makes it a paperclip)
+  content += renderOpenSketch(
+    roughLinePoints(
+      { x: clipX + outerW * 0.5, y: clipY - outerH * 0.15 },
+      { x: clipX + outerW * 0.5, y: clipY + outerH * 0.12 },
+      rng, ctx.controls, 4, 0.03,
+    ),
+    rng, { width: 3.2, stroke: '#5a7a9a', opacity: 0.92 },
+  );
+  content += renderOpenSketch(
+    roughArcPoints(clipX + outerW * 0.15, clipY + outerH * 0.12, outerW * 0.32, outerH * 0.1, 0.05, Math.PI - 0.05, rng),
+    rng, { width: 3.2, stroke: '#5a7a9a', opacity: 0.92 },
+  );
+  content += renderOpenSketch(
+    roughLinePoints(
+      { x: clipX - outerW * 0.02, y: clipY + outerH * 0.12 },
+      { x: clipX - outerW * 0.02, y: clipY - outerH * 0.08 },
+      rng, ctx.controls, 4, 0.03,
+    ),
+    rng, { width: 3.2, stroke: '#5a7a9a', opacity: 0.92 },
+  );
+
+  // Googly eyes on upper bend
+  const eyeY = clipY - outerH * 0.32;
+  const leftEyeX = clipX - 7;
+  const rightEyeX = clipX + 7;
+  content += renderClosedSketch(roughLoopPoints(leftEyeX, eyeY, 6.5, 7, rng, ctx.controls, { pointCount: 10 }), rng, { fill: 'white', width: 1.5, opacity: 0.98 });
+  content += renderClosedSketch(roughLoopPoints(rightEyeX, eyeY, 6.5, 7, rng, ctx.controls, { pointCount: 10 }), rng, { fill: 'white', width: 1.5, opacity: 0.98 });
+
+  // Pupils — expression-dependent
+  const pupilOffX = expression === 'smug' ? 1.5 : expression === 'thinking' ? -1.2 : 0;
+  const pupilOffY = expression === 'panicked' ? -1.5 : expression === 'thinking' ? 1.0 : 0;
+  const pupilScale = expression === 'panicked' ? 1.4 : expression === 'smug' ? 0.7 : 1.0;
+  content += renderClosedSketch(roughLoopPoints(leftEyeX + pupilOffX, eyeY + pupilOffY, 2.8 * pupilScale, 3.0 * pupilScale, rng, ctx.controls, { pointCount: 7 }), rng, { fill: 'black', width: 0.8, opacity: 0.95, doubleStroke: false });
+  content += renderClosedSketch(roughLoopPoints(rightEyeX + pupilOffX, eyeY + pupilOffY, 2.8 * pupilScale, 3.0 * pupilScale, rng, ctx.controls, { pointCount: 7 }), rng, { fill: 'black', width: 0.8, opacity: 0.95, doubleStroke: false });
+
+  // Eyebrows
+  if (expression === 'smug' || expression === 'thinking') {
+    content += renderOpenSketch(roughLinePoints({ x: leftEyeX - 5, y: eyeY - 9 }, { x: leftEyeX + 4, y: eyeY - 11 }, rng, ctx.controls, 2, 0.02), rng, { width: 1.1, opacity: 0.8 });
+    content += renderOpenSketch(roughLinePoints({ x: rightEyeX - 4, y: eyeY - 11 }, { x: rightEyeX + 5, y: eyeY - 9 }, rng, ctx.controls, 2, 0.02), rng, { width: 1.1, opacity: 0.8 });
+  } else if (expression === 'panicked' || expression === 'confused') {
+    content += renderOpenSketch(roughLinePoints({ x: leftEyeX - 5, y: eyeY - 11 }, { x: leftEyeX + 4, y: eyeY - 8 }, rng, ctx.controls, 2, 0.02), rng, { width: 1.1, opacity: 0.8 });
+    content += renderOpenSketch(roughLinePoints({ x: rightEyeX - 4, y: eyeY - 8 }, { x: rightEyeX + 5, y: eyeY - 11 }, rng, ctx.controls, 2, 0.02), rng, { width: 1.1, opacity: 0.8 });
+  }
+
+  // Mouth — cheerful by default
+  const mouthY = eyeY + 14;
+  if (expression === 'delighted' || expression === 'smug') {
+    content += renderOpenSketch(roughArcPoints(clipX, mouthY - 2, 8, 4.5, 0.15, Math.PI - 0.15, rng), rng, { width: 1.2, opacity: 0.85 });
+  } else if (expression === 'panicked' || expression === 'confused') {
+    content += renderClosedSketch(roughLoopPoints(clipX, mouthY + 1, 4, 3.5, rng, ctx.controls, { pointCount: 8 }), rng, { fill: 'black', width: 0.8, opacity: 0.85, doubleStroke: false });
+  } else {
+    // Default cheerful smile
+    content += renderOpenSketch(roughArcPoints(clipX, mouthY - 1, 7, 3.5, 0.15, Math.PI - 0.15, rng), rng, { width: 1.15, opacity: 0.82 });
+  }
+
+  // Bow-tie at the bottom of the outer U
+  const bowY = clipY + outerH * 0.35;
+  content += renderClosedSketch(roughPolygonPoints([
+    { x: clipX - 2, y: bowY },
+    { x: clipX - 10, y: bowY - 5 },
+    { x: clipX - 10, y: bowY + 5 },
+  ], rng, 0.8), rng, { fill: '#cc3333', width: 1.0, opacity: 0.9, doubleStroke: false });
+  content += renderClosedSketch(roughPolygonPoints([
+    { x: clipX + 2, y: bowY },
+    { x: clipX + 10, y: bowY - 5 },
+    { x: clipX + 10, y: bowY + 5 },
+  ], rng, 0.8), rng, { fill: '#cc3333', width: 1.0, opacity: 0.9, doubleStroke: false });
+
+  // Emotion marks
+  if (expression === 'panicked') {
+    content += drawEmotionMark(ctx, clipX + 22, eyeY - 18, 'sweat');
+  } else if (expression === 'delighted') {
+    content += drawEmotionMark(ctx, clipX + 20, eyeY - 16, 'spark');
+  }
+
+  content += `</g>`;
+  return content;
+}
+
+function drawCopilotFigure(x: number, y: number, panel: ComicPanel, day: string): string {
+  const ctx = createCharacterContext('copilot', panel, day);
+  const rng = ctx.frameRng;
+  const expression = normalizeExpression(panel.expression, 'copilot');
+  const hover = jitter(rng, 1.5);
+  const clipX = x;
+  const clipY = y + hover;
+
+  let content = `<g filter="url(#${ctx.filterId})">`;
+
+  // Smaller paperclip body (60% of CLIPPY)
+  const scale = 0.6;
+  const outerW = 28 * scale;
+  const outerH = 65 * scale;
+  content += renderOpenSketch(
+    roughLinePoints(
+      { x: clipX - outerW * 0.5, y: clipY - outerH * 0.4 },
+      { x: clipX - outerW * 0.5, y: clipY + outerH * 0.35 },
+      rng, ctx.controls, 4, 0.04,
+    ),
+    rng, { width: 2.5, stroke: '#7a9aba', opacity: 0.92 },
+  );
+  content += renderOpenSketch(
+    roughArcPoints(clipX, clipY + outerH * 0.35, outerW * 0.5, outerH * 0.18, 0.05, Math.PI - 0.05, rng),
+    rng, { width: 2.5, stroke: '#7a9aba', opacity: 0.92 },
+  );
+  content += renderOpenSketch(
+    roughLinePoints(
+      { x: clipX + outerW * 0.5, y: clipY + outerH * 0.35 },
+      { x: clipX + outerW * 0.5, y: clipY - outerH * 0.15 },
+      rng, ctx.controls, 4, 0.04,
+    ),
+    rng, { width: 2.5, stroke: '#7a9aba', opacity: 0.92 },
+  );
+
+  // Single dot eye
+  const eyeY = clipY - outerH * 0.28;
+  content += renderClosedSketch(roughLoopPoints(clipX, eyeY, 3.5, 3.8, rng, ctx.controls, { pointCount: 7 }), rng, { fill: 'white', width: 1.2, opacity: 0.96 });
+  content += renderClosedSketch(roughLoopPoints(clipX, eyeY, 1.8, 2.0, rng, ctx.controls, { pointCount: 6 }), rng, { fill: 'black', width: 0.7, opacity: 0.95, doubleStroke: false });
+
+  // Antenna on top
+  content += renderOpenSketch(
+    roughLinePoints(
+      { x: clipX, y: clipY - outerH * 0.4 },
+      { x: clipX + jitter(rng, 0.5), y: clipY - outerH * 0.4 - 12 },
+      rng, ctx.controls, 3, 0.03,
+    ),
+    rng, { width: 1.4, opacity: 0.88 },
+  );
+  content += renderClosedSketch(roughLoopPoints(clipX, clipY - outerH * 0.4 - 13, 2.5, 2.5, rng, ctx.controls, { pointCount: 6 }), rng, { fill: '#cc3333', width: 0.8, opacity: 0.92, doubleStroke: false });
+
+  // COPILOT label
+  content += renderTinyLabel(clipX, clipY + outerH * 0.5, 'COPILOT', 'middle');
+
   content += `</g>`;
   return content;
 }
@@ -745,6 +925,8 @@ function normalizeExpression(expression: unknown, speaker: string): ComicExpress
     tux: ['neutral', 'thinking', 'deadpan', 'worried', 'delighted'],
     python: ['smug', 'thinking', 'confused', 'delighted', 'worried'],
     kube_captain: ['smug', 'panicked', 'annoyed', 'delighted', 'thinking'],
+    clippy: ['smug', 'thinking', 'delighted'],
+    copilot: ['blank', 'thinking', 'smug'],
   };
   const allowed = allowedBySpeaker[speaker] || ['neutral', 'confused', 'worried', 'deadpan', 'smug', 'panicked', 'annoyed', 'delighted', 'thinking', 'blank'];
   if ((allowed as string[]).includes(value)) return value as ComicExpression;
@@ -756,6 +938,8 @@ function normalizeExpression(expression: unknown, speaker: string): ComicExpress
   if (speaker === 'tux') return 'deadpan';
   if (speaker === 'python') return 'smug';
   if (speaker === 'kube_captain') return 'smug';
+  if (speaker === 'clippy') return 'smug';
+  if (speaker === 'copilot') return 'blank';
   return 'neutral';
 }
 

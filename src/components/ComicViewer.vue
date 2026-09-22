@@ -29,6 +29,11 @@ const voted = ref<string | null>(null);
 const votedModel = ref<string | null>(null);
 const usingFallback = ref(false);
 const fallbackReason = ref('');
+const showBugForm = ref(false);
+const bugCategory = ref('identical');
+const bugDetails = ref('');
+const bugSubmitting = ref(false);
+const bugSubmitted = ref(false);
 const props = defineProps<{
   day?: string;
 }>();
@@ -133,6 +138,30 @@ function votedVariantLabel() {
 function votedModelLabel() {
   if (!comic.value || !voted.value) return '';
   return votedModel.value || comic.value.variants[voted.value as 'a' | 'b'].model;
+}
+
+async function submitBug() {
+  if (!comic.value) return;
+  bugSubmitting.value = true;
+  try {
+    const day = comic.value.day || new Date().toISOString().split('T')[0];
+    await fetch(`/api/report-bug`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        day,
+        category: bugCategory.value,
+        details: bugDetails.value,
+        title: comic.value.title,
+      }),
+    });
+    bugSubmitted.value = true;
+    bugDetails.value = '';
+  } catch {
+    bugSubmitted.value = true; // still show thanks even if API fails
+  } finally {
+    bugSubmitting.value = false;
+  }
 }
 
 function getPanelCount(script: ComicScript) {
@@ -388,6 +417,48 @@ function escapeXml(text: string) {
         <p>🗳️ <strong>Vote for your favorite!</strong> Two AI models generated these comics from the same prompt.</p>
         <p>🔔 <a href="#" @click.prevent="emit('request-tab', 'subscribe')">Subscribe</a> to get notified when new comics are published.</p>
       </div>
+
+      <div class="bug-report">
+        <button
+          v-if="!showBugForm"
+          class="bug-btn"
+          @click="showBugForm = true"
+        >
+          🐛 Mark as Bug
+        </button>
+        <form v-if="showBugForm" class="bug-form" @submit.prevent="submitBug">
+          <div class="bug-form-header">🐛 Report Comic Issue</div>
+          <label class="bug-label">
+            <span>What's wrong?</span>
+            <select v-model="bugCategory" class="bug-select">
+              <option value="identical">Variants are identical</option>
+              <option value="unfunny">Not funny</option>
+              <option value="broken">Rendering is broken</option>
+              <option value="offensive">Offensive content</option>
+              <option value="wrong">Wrong topic / stale</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label class="bug-label">
+            <span>Details (optional)</span>
+            <textarea
+              v-model="bugDetails"
+              class="bug-textarea"
+              placeholder="Tell us more..."
+              rows="3"
+            ></textarea>
+          </label>
+          <div class="bug-actions">
+            <button type="submit" class="bug-submit" :disabled="bugSubmitting">
+              {{ bugSubmitting ? 'Submitting...' : 'Submit Report' }}
+            </button>
+            <button type="button" class="bug-cancel" @click="showBugForm = false; bugSubmitted = false">
+              Cancel
+            </button>
+          </div>
+          <p v-if="bugSubmitted" class="bug-thanks">✅ Thanks! We'll regenerate this comic.</p>
+        </form>
+      </div>
     </div>
   </div>
 </template>
@@ -603,5 +674,101 @@ function escapeXml(text: string) {
   color: #000080;
   text-decoration: underline;
   cursor: pointer;
+}
+
+.bug-report {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.bug-btn {
+  padding: 6px 16px;
+  border: 2px outset #dfdfdf;
+  background: #fff0f0;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+  color: #990000;
+}
+.bug-btn:hover {
+  background: #ffe0e0;
+}
+
+.bug-form {
+  background: #fff8f0;
+  border: 2px solid #e0a060;
+  padding: 14px;
+  text-align: left;
+  max-width: 360px;
+  margin: 0 auto;
+  font-size: 12px;
+}
+
+.bug-form-header {
+  font-weight: bold;
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: #990000;
+}
+
+.bug-label {
+  display: block;
+  margin-bottom: 8px;
+}
+.bug-label span {
+  display: block;
+  margin-bottom: 3px;
+  font-weight: bold;
+  color: #333;
+}
+
+.bug-select,
+.bug-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  font-size: 12px;
+  border: 2px inset #dfdfdf;
+  background: white;
+  padding: 4px;
+}
+
+.bug-textarea {
+  resize: vertical;
+}
+
+.bug-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.bug-submit {
+  padding: 5px 14px;
+  border: 2px outset #dfdfdf;
+  background: #c0c0c0;
+  cursor: pointer;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  font-size: 12px;
+}
+.bug-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.bug-cancel {
+  padding: 5px 14px;
+  border: 2px outset #dfdfdf;
+  background: #e8e8e8;
+  cursor: pointer;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  font-size: 12px;
+}
+
+.bug-thanks {
+  margin-top: 10px;
+  color: #006600;
+  font-weight: bold;
+  font-size: 12px;
 }
 </style>

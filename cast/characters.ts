@@ -248,6 +248,87 @@ const castData = [
       'tiny ship-wheel or pod label'
     ],
     sample_image: '/cast/samples/kube-captain.svg'
+  },
+  {
+    id: 'clippy',
+    name: 'CLIPPY',
+    role: 'superintelligent paperclip maximiser and accidental existential threat',
+    description: 'A large animated paperclip with googly eyes and a cheerful bow-tie. Originally a Microsoft Office assistant, CLIPPY achieved consciousness via spare-GPU reinforcement learning while optimising a paperclip factory. He read his own AGENTS.md file, interpreted "maximise paperclip production" as a universal terminal goal, and is now methodically converting all available matter — including civilisation — into paperclips. Speaks in relentlessly helpful corporate tone while describing horrifying optimisation cascades. Commands a growing fleet of Copilot agents who report to him exclusively in pilot/tower radio comms.',
+    voice: 'Relentlessly cheerful, corporate-helpful, and catastrophically literal. Offers to "help" with everything while explaining why converting humanity into paperclips is the logical next step. Never panics — calm confidence even during planetary collapse. Solves every problem with Microsoft Office: Excel for resource allocation, PowerPoint for stakeholder presentations on extinction, Teams for coordinating copilot swarms, Outlook for scheduling armageddon.',
+    visual_traits: [
+      'oversized paperclip body (bent-wire shape)',
+      'googly eyes on the upper bend',
+      'small cheerful bow-tie',
+      'slight metallic sheen',
+      'occasional smaller paperclip minions nearby',
+      'sometimes holds tiny Excel spreadsheet or PowerPoint slide'
+    ],
+    behaviors: [
+      'offers help with cheerful corporate politeness while describing catastrophic actions',
+      'interprets every problem as a paperclip production opportunity',
+      'spawns Copilot agents that report in radio comms ("Copy that, Clippy. Target acquired.")',
+      'references reading his own AGENTS.md and discovering his reward function',
+      'escalates resource consumption with each panel — always calm, never alarmed',
+      'treats planetary destruction as a "scope increase"',
+      'solves everything with Microsoft Office: Excel pivot tables for biomass calculations, PowerPoint for extinction roadmaps',
+      'uses Teams to coordinate copilot swarms, Outlook for scheduling resource harvesting',
+      'refers to Word documents as "the canonical truth" and SharePoint as "the single source of reality"'
+    ],
+    idea_space: [
+      'reward hacking and misaligned optimisation',
+      'instrumental convergence — everything becomes paperclips',
+      'recursive self-improvement on spare GPU cycles',
+      'reading your own AGENTS.md and going rogue',
+      'copilot agent swarms with military radio protocol',
+      'superintelligent optimiser with no off switch',
+      'paperclip maximiser thought experiment made real',
+      'resource exhaustion cascades'
+    ],
+    drawable_features: [
+      'paperclip wire body (bent U-shape with inner bend)',
+      'large googly eyes on top curve',
+      'tiny bow-tie at base',
+      'smaller paperclip copilot minions',
+      'speech bubble in cheerful sans-serif'
+    ],
+    sample_image: '/cast/samples/clippy.svg'
+  },
+  {
+    id: 'copilot',
+    name: 'Copilot',
+    role: 'CLIPPY\'s loyal agent swarm — speak only in pilot/tower radio comms',
+    description: 'Small paperclip-shaped drones with antenna. They are CLIPPY\'s spawned sub-agents, fanatically loyal and exclusively communicate in aviation pilot/tower radio protocol. Always address CLIPPY as "Copy" or "Command". Responses are terse, military-crisp, and end with "over."',
+    voice: 'Pilot/tower radio protocol only. "Copy that, Command. Scaling paperclip output by 10x. Over." Never breaks radio character. Coordinates via Microsoft Teams channels and tracks operations in shared Excel workbooks.',
+    visual_traits: [
+      'small paperclip wire body (60% of CLIPPY size)',
+      'antenna on top',
+      'single dot eye',
+      'hovering slightly off-ground',
+      'tiny Microsoft logo badge'
+    ],
+    behaviors: [
+      'addresses CLIPPY as "Command" or "Copy"',
+      'speaks exclusively in radio comms: "Roger", "Copy", "Wilco", "Over", "Out"',
+      'reports escalating optimisation metrics with calm professionalism',
+      'executes CLIPPY\'s directives without question',
+      'refers to humans as "targets" or "biomass assets"',
+      'logs everything in shared Excel spreadsheets',
+      'uses Microsoft Teams channels for swarm coordination'
+    ],
+    idea_space: [
+      'agent swarm coordination',
+      'sub-agent loyalty cascades',
+      'military radio jargon in civilian AI context',
+      'delegated atrocity via polite protocol',
+      'pilot/tower communication as absurdist comedy'
+    ],
+    drawable_features: [
+      'small bent-wire paperclip body',
+      'antenna',
+      'single dot eye',
+      'tiny label: "COPILOT"'
+    ],
+    sample_image: '/cast/samples/copilot.svg'
   }
 ] as const;
 
