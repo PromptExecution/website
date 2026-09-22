@@ -94,7 +94,7 @@ onUnmounted(() => {
       </div>
 
       <div class="status-bar">
-        <p class="status-bar-field">Sponsored by Cloudflare ☁️</p>
+        <p class="status-bar-field">🛡️ DDOS protected by Cloudflare CDN</p>
         <p class="status-bar-field">
           Powered by Workers AI + R2 + D1 + Pages
         </p>
