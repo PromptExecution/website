@@ -1,5 +1,6 @@
 import type { CastCharacter } from './cast.ts';
 import { chatCompletion, type ChatMessage, type ModelRouterEnv } from './model-router.ts';
+import type { ComicBrief, PremiseCandidate, ScriptEvaluation } from './comic-loop.ts';
 
 export interface ComicPanel {
   panelNumber: number;
@@ -13,6 +14,7 @@ export interface ComicPanel {
   visualFocus?: string;
   expression?: ComicExpression;
   cameo?: string;
+  screenText?: string;
 }
 
 export interface ComicScript {
@@ -41,7 +43,7 @@ const CHARACTER_EXPRESSION_GUIDE: Record<string, ComicExpression[]> = {
   kube_captain: ['smug', 'panicked', 'annoyed', 'delighted', 'thinking'],
 };
 
-interface GenerateComicScriptOptions {
+export interface GenerateComicScriptOptions {
   ai: any;
   model: string;
   day: string;
@@ -53,6 +55,8 @@ interface GenerateComicScriptOptions {
   improvMenu?: ComicImprovMenu;
   fallbackModel?: string;
   llmEnv?: { LOCAL_LLM_URL?: string; LOCAL_LLM_API_KEY?: string };
+  brief?: ComicBrief;
+  premise?: PremiseCandidate;
 }
 
 export interface ComicImprovMenu {
@@ -100,17 +104,66 @@ export async function generateComicScript(options: GenerateComicScriptOptions): 
   }
 }
 
+export async function rewriteComicScript(
+  options: GenerateComicScriptOptions,
+  draft: ComicScript,
+  evaluation: ScriptEvaluation,
+  inversionDirective?: string,
+): Promise<ComicScript> {
+  const systemPrompt = [
+    'You are revising a technical comic after a strict editorial review.',
+    'Return only JSON.',
+    'Preserve the underlying technical truth, but replace weak joke mechanics.',
+    'Do not explain the joke or use stock closers such as "accurate", "technically correct", "classic", "cursed", or "ship it".',
+    'The final beat must change how the reader interprets the setup. It may be a silent visual action.',
+  ].join(' ');
+  const userPrompt = [
+    `Rewrite this as exactly ${options.panelCount} panels:`,
+    JSON.stringify(draft),
+    `Editorial score: ${evaluation.total}/30.`,
+    `Problems to fix: ${evaluation.issues.join(' | ') || 'Increase surprise and specificity.'}`,
+    inversionDirective ? `Required inversion: ${inversionDirective}` : 'Make the smallest rewrite that fixes the cited problems.',
+    options.brief ? `Comic brief: ${JSON.stringify(options.brief)}` : '',
+    options.premise ? `Selected premise: ${JSON.stringify(options.premise)}` : '',
+    'Keep dialogue under 65 characters per line.',
+    'Use keys: title, panels. Panel keys: panelNumber, speaker, dialogue?, robotThought?, action?, pose?, scene?, beat?, visualFocus?, expression?, cameo?, screenText?.',
+    'Use screenText for exact text shown on a dashboard, diff, alert, log, or terminal. Keep it under 2 short lines.',
+    'speaker must be one of: user, robot, simon, boss, ferris.',
+  ].filter(Boolean).join('\n');
+  const request: Record<string, unknown> = {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    max_tokens: 1400,
+    temperature: inversionDirective ? 1.0 : 0.75,
+  };
+
+  if (JSON_MODE_MODELS.has(options.model)) {
+    request.response_format = buildScriptResponseFormat(options.panelCount);
+  }
+
+  const response = await options.ai.run(options.model, request);
+  const raw = extractModelPayload(response);
+  const parsed = typeof raw === 'string' ? parseJsonFromText(raw) : raw;
+  if (!parsed) throw new Error(`Model ${options.model} returned no parseable rewrite JSON`);
+  return normalizeComicScript(parsed, options);
+}
+
 async function generateComicScriptOnce(options: GenerateComicScriptOptions): Promise<ComicScript> {
   const systemPrompt = [
     'You are the head writer for "LLM DOES NOT COMPUTE", a dry, technically accurate webcomic.',
     'Return only valid JSON with keys: title (string), panels (array).',
     'Every panel object MUST include these string fields: panelNumber, speaker, dialogue, robotThought, action, pose, scene, beat, visualFocus, expression.',
     'dialogue and robotThought must be non-empty strings — never null, never omitted.',
-    'The comic must be funny because the dialogue is sharp and specific, not because the characters explain the joke.',
+    'The comic engine is: a machine precisely optimizes a broken human requirement.',
+    'The technical situation is not itself the joke. Find the contradictory incentive inside it.',
+    'The comic must be funny because the dialogue and visible consequence are sharp and specific, not because a character explains the joke.',
     'Keep language sparse and punchy. No rambling setup.',
-    'Avoid generic AI hype language, vague corporate filler, and repeated punchlines.',
-    'Each panel should move the joke forward.',
-    'The final panel must land a deadpan punchline or brutal correction.',
+    'Avoid generic AI hype language, vague corporate filler, cruelty without insight, and repeated punchlines.',
+    'Each panel must change the reader\'s understanding of the situation.',
+    'The final panel must reframe the setup. It may use a silent visual action instead of dialogue.',
+    'Never end with "accurate", "technically correct", "classic", "cursed", "ship it", or a synonym that merely confirms the prior line.',
   ].join(' ');
 
   const castGuide = options.cast.map((character) => (
@@ -130,6 +183,8 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
     `Title: ${options.title}`,
     `Topic: ${options.topic}`,
     `Variant direction: ${options.variantDirective}`,
+    options.brief ? `Comic brief: ${JSON.stringify(options.brief)}` : '',
+    options.premise ? `Selected premise: ${JSON.stringify(options.premise)}` : '',
     'Cast in scope:',
     castGuide,
     improvMenu ? 'Shared improv menu for both competing models:' : '',
@@ -139,7 +194,7 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
     '- Choose characters, tools, subjects, props, and running gags from the shared improv menu when it is provided.',
     '- Maintain continuity: reuse one chosen subject and one chosen visual motif across the strip, with escalation.',
     '- Include the User and the Robot somewhere in the strip.',
-    '- At least one panel must contain the robot internal monologue in `robotThought`.',
+    '- Use `robotThought` only when it creates dramatic irony; it is optional.',
     '- Keep every dialogue line short: target 4-10 words and never more than 65 characters.',
     '- Keep every robotThought block under 3 short lines.',
     '- Avoid verbose panel narration. `action` should be 2-6 words only (pose note, not a sentence).',
@@ -151,14 +206,15 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
     '- Use `cameo` only for a non-speaking visual cameo from cameo choices, especially ferris when available.',
     '- Ferris is usually a silent cameo, not the main speaker.',
     '- Return valid JSON with keys: title, panels.',
-    '- panels must be an array of objects using: panelNumber, speaker, dialogue?, robotThought?, action?, pose?, scene?, beat?, visualFocus?, expression?, cameo?.',
+    '- panels must be an array of objects using: panelNumber, speaker, dialogue?, robotThought?, action?, pose?, scene?, beat?, visualFocus?, expression?, cameo?, screenText?.',
+    '- Use screenText when the joke depends on exact text visible in a dashboard, diff, alert, log, or terminal.',
     '- pose should be one of: neutral, leaning, pointing, facepalm, slumped, hands_up, typing, smug, uncertain, deadpan.',
     `- scene should be one of: ${COMIC_SCENES.join(', ')}.`,
     `- beat should be one of: ${COMIC_BEATS.join(', ')}.`,
     `- expression should be one of: ${COMIC_EXPRESSIONS.join(', ')}.`,
     `- speaker must be one of: ${allowedSpeakers.join(', ')}.`,
     '- Do not wrap the JSON in markdown.',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   const request: Record<string, unknown> = {
     messages: [
@@ -194,6 +250,7 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
                 visualFocus: { type: 'string' },
                 expression: { type: 'string' },
                 cameo: { type: 'string' },
+                screenText: { type: 'string' },
               },
               required: ['panelNumber', 'speaker', 'dialogue', 'robotThought', 'scene', 'beat', 'expression'],
               additionalProperties: false,
@@ -272,6 +329,7 @@ function normalizeComicScript(raw: any, options: GenerateComicScriptOptions): Co
     const visualFocus = sanitizeVisualFocus(panel.visualFocus, scene, action);
     const expression = sanitizeExpression(panel.expression, speaker, pose, robotThought, dialogue);
     const cameo = sanitizeCameo(panel.cameo, speaker, options);
+    const screenText = sanitizeScreenText(panel.screenText);
 
     normalizedPanels.push({
       panelNumber: index + 1,
@@ -285,25 +343,11 @@ function normalizeComicScript(raw: any, options: GenerateComicScriptOptions): Co
       visualFocus,
       expression,
       cameo,
+      screenText,
     });
   }
 
-  // Variant-seeded fallback: different models get different filler content
   const fallbackSeed = simpleHash(options.model);
-
-  if (!normalizedPanels.some((panel) => panel.robotThought)) {
-    const robotPanel = normalizedPanels.find((panel) => panel.speaker === 'robot') || normalizedPanels[1] || normalizedPanels[0];
-    robotPanel.speaker = 'robot';
-    const thoughts = [
-      '> parsing punchline\n> confidence: 0.61\n> ship it anyway',
-      '> generating humor\n> humor level: undefined\n> deploying anyway',
-      '> scanning joke structure\n> comedy ambiguity: high\n> proceeding',
-      '> analyzing setup\n> punchline vector: NaN\n> full send',
-      '> compiling wit\n> 0 warnings, 1 existential dread\n> ignoring',
-      '> tokenizing context\n> joke alignment: 73%\n> good enough',
-    ];
-    robotPanel.robotThought = thoughts[fallbackSeed % thoughts.length];
-  }
 
   if (!normalizedPanels.some((panel) => panel.dialogue)) {
     const openers = [
@@ -333,6 +377,44 @@ function normalizeComicScript(raw: any, options: GenerateComicScriptOptions): Co
     panels: normalizedPanels,
     day: options.day,
     model: options.model,
+  };
+}
+
+function buildScriptResponseFormat(panelCount: number) {
+  return {
+    type: 'json_schema',
+    json_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        panels: {
+          type: 'array',
+          minItems: panelCount,
+          maxItems: panelCount,
+          items: {
+            type: 'object',
+            properties: {
+              panelNumber: { type: 'integer' },
+              speaker: { type: 'string' },
+              dialogue: { type: 'string' },
+              robotThought: { type: 'string' },
+              action: { type: 'string' },
+              pose: { type: 'string' },
+              scene: { type: 'string' },
+              beat: { type: 'string' },
+              visualFocus: { type: 'string' },
+              expression: { type: 'string' },
+              cameo: { type: 'string' },
+              screenText: { type: 'string' },
+            },
+            required: ['panelNumber', 'speaker'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['title', 'panels'],
+      additionalProperties: false,
+    },
   };
 }
 
@@ -447,6 +529,17 @@ function sanitizeCameo(input: unknown, speaker: string, options: GenerateComicSc
 
 function getAllowedExpressions(speaker: string): ComicExpression[] {
   return CHARACTER_EXPRESSION_GUIDE[speaker] || COMIC_EXPRESSIONS;
+}
+
+function sanitizeScreenText(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined;
+  const lines = input
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((line) => truncateAtWord(line, 28));
+  return lines.length > 0 ? lines.join('\n') : undefined;
 }
 
 function sanitizePose(input: unknown, action: unknown, speaker: string): string | undefined {

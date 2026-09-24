@@ -10,6 +10,10 @@ This directory contains the workflow specifications and test infrastructure for 
 
 ## Architecture
 
+The current editorial control flow is documented in
+[comic-generation-loops.md](./comic-generation-loops.md). It wraps script generation
+in premise selection, novelty scoring, bounded rewrite, and TRIZ inversion loops.
+
 ### Three-Stage Pipeline
 
 ```
