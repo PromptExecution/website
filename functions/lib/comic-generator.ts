@@ -1,4 +1,5 @@
 import type { CastCharacter } from './cast.ts';
+import { chatCompletion, type ChatMessage, type ModelRouterEnv } from './model-router.ts';
 
 export interface ComicPanel {
   panelNumber: number;
@@ -51,6 +52,7 @@ interface GenerateComicScriptOptions {
   variantDirective: string;
   improvMenu?: ComicImprovMenu;
   fallbackModel?: string;
+  llmEnv?: { LOCAL_LLM_URL?: string; LOCAL_LLM_API_KEY?: string };
 }
 
 export interface ComicImprovMenu {
@@ -63,9 +65,17 @@ export interface ComicImprovMenu {
 }
 
 const JSON_MODE_MODELS = new Set([
+  // All CF models in the lineup + defaults — force structured JSON output
+  // so panels reliably include dialogue and robotThought fields.
   '@cf/qwen/qwen3-30b-a3b-fp8',
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
   '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b',
+  '@cf/openai/gpt-oss-120b',
+  '@cf/moonshotai/kimi-k2.6',
+  '@cf/nvidia/nemotron-3-120b-a12b',
+  '@cf/qwen/qwq-32b',
+  '@cf/meta/llama-4-scout-17b-16e-instruct',
+  '@cf/google/gemma-4-26b-a4b-it',
 ]);
 
 export async function generateComicScript(options: GenerateComicScriptOptions): Promise<ComicScript> {
@@ -93,7 +103,9 @@ export async function generateComicScript(options: GenerateComicScriptOptions): 
 async function generateComicScriptOnce(options: GenerateComicScriptOptions): Promise<ComicScript> {
   const systemPrompt = [
     'You are the head writer for "LLM DOES NOT COMPUTE", a dry, technically accurate webcomic.',
-    'Return only JSON.',
+    'Return only valid JSON with keys: title (string), panels (array).',
+    'Every panel object MUST include these string fields: panelNumber, speaker, dialogue, robotThought, action, pose, scene, beat, visualFocus, expression.',
+    'dialogue and robotThought must be non-empty strings — never null, never omitted.',
     'The comic must be funny because the dialogue is sharp and specific, not because the characters explain the joke.',
     'Keep language sparse and punchy. No rambling setup.',
     'Avoid generic AI hype language, vague corporate filler, and repeated punchlines.',
@@ -154,7 +166,7 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
       { role: 'user', content: userPrompt },
     ],
     max_tokens: 1400,
-    temperature: 0.9,
+    temperature: 0.7,
   };
 
   if (JSON_MODE_MODELS.has(options.model)) {
@@ -183,7 +195,7 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
                 expression: { type: 'string' },
                 cameo: { type: 'string' },
               },
-              required: ['panelNumber', 'speaker'],
+              required: ['panelNumber', 'speaker', 'dialogue', 'robotThought', 'scene', 'beat', 'expression'],
               additionalProperties: false,
             },
           },
@@ -194,12 +206,35 @@ async function generateComicScriptOnce(options: GenerateComicScriptOptions): Pro
     };
   }
 
-  const response = await options.ai.run(options.model, request);
+  let response: any;
+  if (options.model.startsWith('local/') && options.llmEnv) {
+    // Route local/ models through the model router (sm3lly llama-server via tunnel)
+    const llmRouterEnv: ModelRouterEnv = { AI: options.ai, ...options.llmEnv };
+    const messages = (request.messages as ChatMessage[]);
+    const result = await chatCompletion(llmRouterEnv, options.model, messages, {
+      max_tokens: request.max_tokens as number,
+      temperature: request.temperature as number,
+    });
+    response = { response: result.response };
+    console.log(`[comic-gen] Used local model ${result.model} via model router`);
+  } else {
+    response = await options.ai.run(options.model, request);
+  }
   const raw = extractModelPayload(response);
   const parsed = typeof raw === 'string' ? parseJsonFromText(raw) : raw;
 
   if (!parsed) {
+    const snippet = typeof raw === 'string' ? raw.slice(0, 300) : JSON.stringify(raw).slice(0, 300);
+    console.error(`[comic-gen] Model ${options.model} returned no parseable JSON. Raw snippet: ${snippet}`);
     throw new Error(`Model ${options.model} returned no parseable JSON`);
+  }
+
+  // Diagnostic: log panel field survival rate
+  const panels = Array.isArray(parsed?.panels) ? parsed.panels : [];
+  const hasDialogue = panels.filter((p: any) => typeof p?.dialogue === 'string' && p.dialogue.trim()).length;
+  const hasThought = panels.filter((p: any) => typeof p?.robotThought === 'string' && p.robotThought.trim()).length;
+  if (hasDialogue === 0 && hasThought === 0 && panels.length > 0) {
+    console.warn(`[comic-gen] Model ${options.model}: all ${panels.length} panels have no string dialogue/robotThought. Field types: ${panels.map((p: any) => `d=${typeof p?.dialogue},t=${typeof p?.robotThought}`).join('; ')}`);
   }
 
   return normalizeComicScript(parsed, options);
@@ -253,17 +288,44 @@ function normalizeComicScript(raw: any, options: GenerateComicScriptOptions): Co
     });
   }
 
+  // Variant-seeded fallback: different models get different filler content
+  const fallbackSeed = simpleHash(options.model);
+
   if (!normalizedPanels.some((panel) => panel.robotThought)) {
     const robotPanel = normalizedPanels.find((panel) => panel.speaker === 'robot') || normalizedPanels[1] || normalizedPanels[0];
     robotPanel.speaker = 'robot';
-    robotPanel.robotThought = '> parsing punchline\n> confidence: 0.61\n> ship it anyway';
+    const thoughts = [
+      '> parsing punchline\n> confidence: 0.61\n> ship it anyway',
+      '> generating humor\n> humor level: undefined\n> deploying anyway',
+      '> scanning joke structure\n> comedy ambiguity: high\n> proceeding',
+      '> analyzing setup\n> punchline vector: NaN\n> full send',
+      '> compiling wit\n> 0 warnings, 1 existential dread\n> ignoring',
+      '> tokenizing context\n> joke alignment: 73%\n> good enough',
+    ];
+    robotPanel.robotThought = thoughts[fallbackSeed % thoughts.length];
   }
 
   if (!normalizedPanels.some((panel) => panel.dialogue)) {
+    const openers = [
+      'Did prod recover?',
+      'Why is the dashboard on fire?',
+      'Who pushed to main at 3am?',
+      'Is the cache key fixed yet?',
+      'What happened to the rollback?',
+      'Are the metrics lying again?',
+    ];
+    const closers = [
+      'Graphs recovered. Production did not.',
+      'The dashboard is decorative now.',
+      'We call that a soft launch.',
+      'It works in our hearts.',
+      'The rollback rolled forward.',
+      'Metrics say yes. Users say no.',
+    ];
     normalizedPanels[0].speaker = 'user';
-    normalizedPanels[0].dialogue = 'Did prod recover?';
+    normalizedPanels[0].dialogue = openers[fallbackSeed % openers.length];
     normalizedPanels[normalizedPanels.length - 1].speaker = 'simon';
-    normalizedPanels[normalizedPanels.length - 1].dialogue = 'Graphs recovered. Production did not.';
+    normalizedPanels[normalizedPanels.length - 1].dialogue = closers[fallbackSeed % closers.length];
   }
 
   return {
@@ -290,16 +352,34 @@ function normalizeSpeaker(input: unknown, cast: CastCharacter[]): string {
   return 'user';
 }
 
+function coerceToString(input: unknown): string | undefined {
+  if (typeof input === 'string') return input;
+  if (typeof input === 'number' || typeof input === 'boolean') return String(input);
+  if (Array.isArray(input)) {
+    const joined = input.map((item) => (typeof item === 'string' ? item : String(item ?? ''))).filter(Boolean).join(' ');
+    return joined || undefined;
+  }
+  if (input && typeof input === 'object') {
+    const obj = input as Record<string, unknown>;
+    for (const key of ['text', 'content', 'line', 'value', 'dialogue', 'message']) {
+      if (typeof obj[key] === 'string' && obj[key]) return obj[key] as string;
+    }
+  }
+  return undefined;
+}
+
 function sanitizeLine(input: unknown, maxLength = 65): string | undefined {
-  if (typeof input !== 'string') return undefined;
-  const clean = input.replace(/\s+/g, ' ').trim();
+  const coerced = coerceToString(input);
+  if (!coerced) return undefined;
+  const clean = coerced.replace(/\s+/g, ' ').trim();
   if (!clean) return undefined;
   return truncateAtWord(clean, maxLength);
 }
 
 function sanitizeThought(input: unknown): string | undefined {
-  if (typeof input !== 'string') return undefined;
-  const lines = input
+  const coerced = coerceToString(input);
+  if (!coerced) return undefined;
+  const lines = coerced
     .split('\n')
     .map((line) => line.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
@@ -526,4 +606,14 @@ function truncateAtWord(text: string, maxLength: number): string {
   const boundary = clipped.lastIndexOf(' ');
   if (boundary < 10) return clipped.trim();
   return clipped.slice(0, boundary).trim();
+}
+
+/** Simple FNV-1a hash for variant-seeded fallbacks */
+function simpleHash(input: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % 1000;
 }

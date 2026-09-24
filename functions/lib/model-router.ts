@@ -23,9 +23,9 @@ export interface ModelRouterEnv {
 }
 
 const MODEL_ENDPOINTS: Record<string, string> = {
-  'heretic':   ':8002',
-  'safe':      ':8001',
-  'default':   ':8002',
+  'heretic':   'https://llm.promptexecution.com',
+  'safe':      'https://llm.promptexecution.com',  // same tunnel, same host
+  'default':   'https://llm.promptexecution.com',
 };
 
 /**
@@ -74,7 +74,7 @@ export async function chatCompletion(
   }
 
   // Local model — OpenAI-compatible API
-  const baseUrl = env.LOCAL_LLM_URL || `http://192.168.1.137${route.baseUrl}`;
+  const baseUrl = env.LOCAL_LLM_URL || route.baseUrl;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (env.LOCAL_LLM_API_KEY) headers['Authorization'] = `Bearer ${env.LOCAL_LLM_API_KEY}`;
 

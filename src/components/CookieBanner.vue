@@ -44,17 +44,24 @@ export default defineComponent({
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #fff; /* Or any color you prefer */
-  color: #000;
-  padding: 8px;
-  box-shadow: 0px -2px 10px rgba(0, 0, 0, 0.1);
+  background-color: #222;
+  color: #f0f0f0;
+  padding: 14px 20px;
+  box-shadow: 0px -2px 12px rgba(0, 0, 0, 0.25);
   animation: slideUp 0.5s ease-out;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 
   /* Artistic Border */
-  border: 2px solid #000; /* Basic solid border, change as needed */
-  border-radius: 10px; /* Rounded corners */
-  /* You can add more artistic styles like border-image or box-shadow for more effects */
-
+  border: 2px solid #555;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
 }
 
 @keyframes slideUp {
@@ -67,29 +74,39 @@ export default defineComponent({
 }
 
 .accept-button {
-  background-color: green;
-  color: white;
+  background-color: #2e7d32;
+  color: #fff;
   border: none;
-  padding: 10px 20px;
-  margin: 5px;
+  padding: 10px 24px;
+  margin: 0;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: background-color 0.15s;
 }
 
 .reject-button {
-  background-color: grey;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  margin: 5px;
+  background-color: transparent;
+  color: #ccc;
+  border: 1px solid #666;
+  padding: 10px 24px;
+  margin: 0;
   cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.15s;
 }
 
 /* Optional: Add hover effects */
 .accept-button:hover {
-  background-color: darkgreen;
+  background-color: #1b5e20;
 }
 
 .reject-button:hover {
-  background-color: darkgrey;
+  background-color: #444;
+  color: #fff;
+  border-color: #888;
 }
 </style>

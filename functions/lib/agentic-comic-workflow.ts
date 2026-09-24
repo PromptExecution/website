@@ -2,6 +2,7 @@ import { CAST, getCharacterById, pickCharactersExcluding, type CastCharacter } f
 import { generateComicScript, type ComicImprovMenu, type ComicScript } from './comic-generator.ts';
 import { renderComicToSVG } from './svg-renderer.ts';
 import { invokeWorkflow, type AuditEntry } from './ledgrrr-mcp-client.ts';
+import { buildShowdownLineup, type ModelRouterEnv } from './model-router.ts';
 
 const DEFAULT_SCRIPT_MODEL_A = '@cf/deepseek-ai/deepseek-r1-distill-qwen-32b';
 const DEFAULT_SCRIPT_MODEL_B = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
@@ -601,6 +602,18 @@ function pickScriptModels(env: any, seedInput: string): [string, string] {
     return [pinnedA, pinnedB];
   }
 
+  // Showdown mode: variant A = random CF model (censored), variant B = local/heretic (uncensored)
+  if (env.SHOWDOWN_MODE === '1' || env.SHOWDOWN_MODE === 1 || env.LOCAL_LLM_URL) {
+    const routerEnv: ModelRouterEnv = {
+      AI: env.AI,
+      LOCAL_LLM_URL: env.LOCAL_LLM_URL,
+      LOCAL_LLM_API_KEY: env.LOCAL_LLM_API_KEY,
+    };
+    const [showdownA, showdownB] = buildShowdownLineup(routerEnv);
+    // Allow pinning to override one side of the showdown
+    return [pinnedA || showdownA, pinnedB || showdownB];
+  }
+
   const lineup = parseModelLineup(env.SCRIPT_MODEL_LINEUP || env.COMIC_MODEL_LINEUP);
   const models = uniqueModels([
     ...(pinnedA ? [pinnedA] : []),
@@ -686,6 +699,10 @@ async function generateScriptVariant(
       cast: plan.cast,
       variantDirective,
       improvMenu: plan.improv_menu,
+      llmEnv: {
+        LOCAL_LLM_URL: env.LOCAL_LLM_URL,
+        LOCAL_LLM_API_KEY: env.LOCAL_LLM_API_KEY,
+      },
     });
     workflowLog.push(makeStep(stepName, 'ok', `Generated scripted SVG comic with ${script.model}.`));
     return { script };

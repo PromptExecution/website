@@ -139,6 +139,34 @@ onUnmounted(() => {
   background: #c0c0c0;
   cursor: pointer;
   font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Win95-style button icons */
+.title-bar-controls button[aria-label="Minimize"]::after {
+  content: '\25AC';
+  font-size: 9px;
+  color: #000;
+  line-height: 1;
+}
+
+.title-bar-controls button[aria-label="Maximize"]::after {
+  content: '\25A1';
+  font-size: 12px;
+  color: #000;
+  line-height: 1;
+}
+
+.title-bar-controls button[aria-label="Close"]::after {
+  content: '\00D7';
+  font-size: 14px;
+  font-weight: bold;
+  color: #000;
+  line-height: 1;
 }
 
 .title-bar-controls button:active {
