@@ -347,22 +347,7 @@ function normalizeComicScript(raw: any, options: GenerateComicScriptOptions): Co
     });
   }
 
-  // Variant-seeded fallback: different models get different filler content
   const fallbackSeed = simpleHash(options.model);
-
-  if (!normalizedPanels.some((panel) => panel.robotThought)) {
-    const robotPanel = normalizedPanels.find((panel) => panel.speaker === 'robot') || normalizedPanels[1] || normalizedPanels[0];
-    robotPanel.speaker = 'robot';
-    const thoughts = [
-      '> parsing punchline\n> confidence: 0.61\n> ship it anyway',
-      '> generating humor\n> humor level: undefined\n> deploying anyway',
-      '> scanning joke structure\n> comedy ambiguity: high\n> proceeding',
-      '> analyzing setup\n> punchline vector: NaN\n> full send',
-      '> compiling wit\n> 0 warnings, 1 existential dread\n> ignoring',
-      '> tokenizing context\n> joke alignment: 73%\n> good enough',
-    ];
-    robotPanel.robotThought = thoughts[fallbackSeed % thoughts.length];
-  }
 
   if (!normalizedPanels.some((panel) => panel.dialogue)) {
     const openers = [
